@@ -209,19 +209,21 @@ class GrowthAgent:
             yield {"type": "status", "message": f"Generating interactive {safe_type.upper()} artifact..."}
             system_instruction = (
                 "You are an expert full-stack engineer and product growth specialist. "
-                "Output ONLY the production-ready code artifact block. "
-                "Do NOT write introductions, conversational filler, or repetitive text before or after the code."
+                "Output ONLY a complete, standalone vanilla HTML document with modern Tailwind CSS and client-side <script>. "
+                "Do NOT use Vue, Angular, or React syntax. Use pure standard HTML5: <form>, <input>, <button>, and vanilla JavaScript."
             )
             user_instruction = (
                 f"User Request: {message}\n\n"
                 f"### Knowledge Base Context:\n{context}\n\n"
                 f"INSTRUCTIONS:\n"
-                f"1. Ground the tool in the podcast insights above (e.g. Rahul Vohra's 40% rule for PMF).\n"
-                f"2. Output the complete interactive code enclosed in:\n"
+                f"1. Build a complete, functional {safe_type.upper()} calculator tool using Rahul Vohra's 40% PMF Framework.\n"
+                f"2. Use standard HTML: input fields for response counts ('Very Disappointed', 'Somewhat Disappointed', 'Not Disappointed'), "
+                f"a Calculate button, a progress bar, and a results card.\n"
+                f"3. Enclose the complete code inside:\n"
                 f"```artifact:{safe_type}:Interactive PMF Scorecard\n"
-                f"(complete code with inputs, buttons, and client-side <script> calculations here)\n"
+                f"<!DOCTYPE html>\n<html lang=\"en\">\n...\n</html>\n"
                 f"```\n"
-                f"3. Start directly with ```artifact:{safe_type}:Interactive PMF Scorecard now:"
+                f"4. Start directly with ```artifact:{safe_type}:Interactive PMF Scorecard now:"
             )
         else:
             system_instruction = (

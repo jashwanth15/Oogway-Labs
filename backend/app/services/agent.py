@@ -75,55 +75,58 @@ class GrowthAgent:
         return "qa", None
 
     def extract_artifacts(self, text: str) -> Tuple[str, List[ArtifactPayload]]:
-        """Extracts ```artifact:type:Title blocks and returns cleaned text + artifacts."""
+        """Extracts artifacts from text (supports ```artifact:... blocks, ```html blocks, and raw HTML)."""
         artifacts: List[ArtifactPayload] = []
-        pattern = re.compile(r"```artifact:(html|markdown|code):([^\n]+)\n(.*?)```", re.DOTALL)
 
-        def replacer(match):
+        # 1. First check explicit ```artifact:(type):(title) blocks
+        pattern = re.compile(r"```artifact:(html|markdown|code):([^\n]+)\n(.*?)```", re.DOTALL)
+        for match in pattern.finditer(text):
             art_type = match.group(1).strip()
             art_title = match.group(2).strip()
             content = match.group(3).strip()
+            # If it's html, verify it contains actual HTML tags
+            if art_type == "html" and ("<" not in content or len(content) < 40):
+                continue
             artifacts.append(ArtifactPayload(
                 title=art_title,
                 artifact_type=art_type,
                 content=content
             ))
-            return f"\n*[Generated Artifact: **{art_title}** ({art_type.upper()}) - View in the Artifact Panel beside chat]*\n"
 
-        cleaned_text = pattern.sub(replacer, text)
+        # 2. Check for standard ```html ... ``` code blocks (common in smaller models)
+        if not artifacts and "```html" in text:
+            html_blocks = re.findall(r"```html\s*\n(.*?)```", text, re.DOTALL)
+            if html_blocks:
+                combined_html = "\n".join(b.strip() for b in html_blocks)
+                if "<" in combined_html:
+                    artifacts.append(ArtifactPayload(
+                        title="Interactive PMF Survey & Scorecard",
+                        artifact_type="html",
+                        content=combined_html
+                    ))
 
-        # Handle unclosed artifact tag (e.g. if tokens cut off before closing ```)
+        # 3. Check for unclosed ```artifact: tag if no closed block matched
         if not artifacts and "```artifact:" in text:
             unclosed_match = re.search(r"```artifact:(html|markdown|code):([^\n]+)\n(.*)$", text, re.DOTALL)
             if unclosed_match:
                 art_type = unclosed_match.group(1).strip()
                 art_title = unclosed_match.group(2).strip()
                 raw_code = unclosed_match.group(3).strip()
-                if art_type == "html" and not raw_code.endswith("</html>"):
-                    if "</body>" not in raw_code:
-                        raw_code += "\n</body></html>"
-                    elif "</html>" not in raw_code:
-                        raw_code += "\n</html>"
-                artifacts.append(ArtifactPayload(
-                    title=art_title,
-                    artifact_type=art_type,
-                    content=raw_code
-                ))
-                cleaned_text = text[:unclosed_match.start()] + f"\n*[Generated Artifact: **{art_title}** ({art_type.upper()}) - View in the Artifact Panel beside chat]*\n"
+                if "<" in raw_code and "### " not in raw_code:
+                    if art_type == "html" and not raw_code.endswith("</html>"):
+                        if "</body>" not in raw_code:
+                            raw_code += "\n</body></html>"
+                        elif "</html>" not in raw_code:
+                            raw_code += "\n</html>"
+                    artifacts.append(ArtifactPayload(
+                        title=art_title,
+                        artifact_type=art_type,
+                        content=raw_code
+                    ))
 
-        # Also handle standard ```html ... ``` code blocks
-        if not artifacts and "```html" in text:
-            html_match = re.search(r"```html\s*\n(.*?)```", text, re.DOTALL)
-            if html_match:
-                artifacts.append(ArtifactPayload(
-                    title="Interactive HTML Artifact",
-                    artifact_type="html",
-                    content=html_match.group(1).strip()
-                ))
-
-        # Fallback check if full HTML was emitted without artifact block
-        if not artifacts and "<!DOCTYPE html>" in text or ("<html" in text and "</html>" in text):
-            html_match = re.search(r"(<!DOCTYPE html.*?>.*?</html>|<html.*?>.*?</html>)", text, re.DOTALL | re.IGNORECASE)
+        # 4. Fallback check for raw HTML markup
+        if not artifacts and ("<!DOCTYPE html>" in text or ("<html" in text and "</html>" in text) or ("<form" in text and "</form>" in text)):
+            html_match = re.search(r"(<!DOCTYPE html.*?>.*?</html>|<html.*?>.*?</html>|<form.*?</form>)", text, re.DOTALL | re.IGNORECASE)
             if html_match:
                 artifacts.append(ArtifactPayload(
                     title="Interactive Growth Widget",
@@ -131,6 +134,7 @@ class GrowthAgent:
                     content=html_match.group(1).strip()
                 ))
 
+        cleaned_text = re.sub(r"```artifact:(html|markdown|code):([^\n]+)\n(.*?)```", r"\n*[Generated Artifact: **\2** (\1) - View in the Artifact Panel beside chat]*\n", text, flags=re.DOTALL)
         return cleaned_text, artifacts
 
     async def stream_chat(

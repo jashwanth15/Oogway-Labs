@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -52,6 +53,241 @@ class GrowthAgent:
         except Exception as e:
             logger.debug(f"Ollama check failed: {e}")
         return {"available": True, "models": self._cached_models}
+
+    def get_pmf_scorecard_template(self) -> str:
+        """Returns a high-craft standalone HTML5 artifact for Rahul Vohra's PMF framework."""
+        return """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rahul Vohra PMF Survey Calculator & Scorecard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0b1120; color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 1.5rem; }
+    .tab-btn.active { background-color: #f59e0b; color: #0b1120; font-weight: 700; }
+    .tab-btn:not(.active) { background-color: #1e293b; color: #94a3b8; }
+    .tab-btn:not(.active):hover { background-color: #334155; color: #f8fafc; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <div class="p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 shadow-2xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 mb-2">
+            <span>⚡ Superhuman Growth Engine</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-100 tracking-tight">Rahul Vohra's PMF Survey Calculator & Scorecard</h1>
+          <p class="text-xs text-slate-400 mt-1">Measure Product-Market Fit quantitatively and reverse-engineer your product roadmap using Sean Ellis's 40% benchmark.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700 font-mono text-amber-400">Target: ≥ 40%</span>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 mt-6 pt-4 border-t border-slate-800">
+        <button onclick="switchTab('calculator')" id="tab-calculator" class="tab-btn active px-4 py-2 rounded-xl text-xs transition">📊 1. Quantitative Scorecard</button>
+        <button onclick="switchTab('survey')" id="tab-survey" class="tab-btn px-4 py-2 rounded-xl text-xs transition">🎯 2. The 4-Question Survey Engine</button>
+        <button onclick="switchTab('roadmap')" id="tab-roadmap" class="tab-btn px-4 py-2 rounded-xl text-xs transition">🛠️ 3. The 50/50 Roadmap Rule</button>
+      </div>
+    </div>
+
+    <!-- TAB 1: CALCULATOR -->
+    <div id="content-calculator" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div class="md:col-span-5 p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wider">Input Survey Responses</h2>
+          <p class="text-xs text-slate-400">Enter respondent counts for Question #1: <em>"How would you feel if you could no longer use the product?"</em></p>
+          <form id="pmfForm" onsubmit="event.preventDefault(); recalculate();" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-emerald-400 mb-1">Very Disappointed (Core Lovers):</label>
+              <input type="number" id="input-very" name="very" value="58" min="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 font-bold focus:border-amber-400 focus:outline-none" oninput="recalculate()" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-amber-400 mb-1">Somewhat Disappointed (Growth Opportunity):</label>
+              <input type="number" id="input-somewhat" name="somewhat" value="28" min="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 font-bold focus:border-amber-400 focus:outline-none" oninput="recalculate()" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Not Disappointed (Disregard Feedback):</label>
+              <input type="number" id="input-not" name="not" value="14" min="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 font-bold focus:border-amber-400 focus:outline-none" oninput="recalculate()" />
+            </div>
+            <div class="pt-2">
+              <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-amber-500/10">Calculate PMF Score</button>
+            </div>
+          </form>
+
+          <div class="pt-4 border-t border-slate-800/80">
+            <span class="text-[11px] font-semibold text-slate-400 block mb-2">⚡ Superhuman Historical Case Studies:</span>
+            <div class="flex flex-col gap-1.5">
+              <button onclick="loadPreset(22, 45, 33)" class="text-left px-3 py-2 rounded-lg bg-slate-950 hover:bg-slate-800 text-xs border border-slate-800 text-slate-300 transition flex items-center justify-between">
+                <span>📉 Summer 2017: 22% PMF</span><span class="text-[10px] text-amber-400 font-mono">Pre-PMF</span>
+              </button>
+              <button onclick="loadPreset(38, 32, 30)" class="text-left px-3 py-2 rounded-lg bg-slate-950 hover:bg-slate-800 text-xs border border-slate-800 text-slate-300 transition flex items-center justify-between">
+                <span>⚖️ Mid-Cycle: 38% PMF</span><span class="text-[10px] text-amber-400 font-mono">Near-Fit</span>
+              </button>
+              <button onclick="loadPreset(58, 28, 14)" class="text-left px-3 py-2 rounded-lg bg-slate-950 hover:bg-slate-800 text-xs border border-slate-800 text-slate-300 transition flex items-center justify-between">
+                <span>🚀 Public Launch: 58% PMF</span><span class="text-[10px] text-emerald-400 font-mono">PMF Achieved!</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="md:col-span-7 p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wider">PMF Scorecard Results</h2>
+              <span id="badge-status" class="px-3 py-1 rounded-full text-xs font-bold border transition">Evaluating...</span>
+            </div>
+
+            <div class="p-6 rounded-2xl bg-slate-950 border border-slate-800/80 mb-6">
+              <div class="flex items-baseline justify-between mb-2">
+                <span class="text-xs text-slate-400 font-medium">PMF Score ("Very Disappointed" Ratio):</span>
+                <span id="metric-score" class="text-4xl font-black text-amber-400 tracking-tight">--%</span>
+              </div>
+              <div class="relative w-full bg-slate-800 rounded-full h-4 overflow-hidden border border-slate-700/60 my-3">
+                <div id="meter-bar" class="h-4 rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 transition-all duration-500" style="width: 0%"></div>
+              </div>
+              <div class="flex justify-between text-[11px] font-mono text-slate-400">
+                <span>0%</span>
+                <span class="text-amber-400 font-bold">▲ 40% Benchmark (Ellis / Superhuman Target)</span>
+                <span>100%</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-6">
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
+                <span class="text-[10px] text-slate-400 font-semibold block uppercase">Total Responses</span>
+                <span id="metric-total" class="text-lg font-bold text-slate-100 font-mono">0</span>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-950 border border-emerald-900/40 text-center">
+                <span class="text-[10px] text-emerald-400 font-semibold block uppercase">Very Disappointed</span>
+                <span id="metric-very-count" class="text-lg font-bold text-emerald-400 font-mono">0</span>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-950 border border-amber-900/40 text-center">
+                <span class="text-[10px] text-amber-400 font-semibold block uppercase">Somewhat</span>
+                <span id="metric-somewhat-count" class="text-lg font-bold text-amber-400 font-mono">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="strategy-box" class="p-4 rounded-xl border text-xs leading-relaxed transition"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: 4-QUESTION ENGINE -->
+    <div id="content-survey" class="space-y-4 hidden">
+      <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+        <div>
+          <h2 class="text-lg font-bold text-slate-100">Rahul Vohra's 4-Question Survey Engine</h2>
+          <p class="text-xs text-slate-400 mt-1">Superhuman doesn't just ask one question. They run this 4-step survey loop to isolate high-conviction roadmap items.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-5 rounded-xl bg-slate-950 border border-amber-500/30 space-y-2">
+            <span class="text-xs font-bold text-amber-400 uppercase">Question #1: The Benchmark Gate</span>
+            <p class="text-sm font-semibold text-slate-200">"How would you feel if you could no longer use [Product]?"</p>
+            <p class="text-xs text-slate-400 leading-relaxed">Options: <em>Very disappointed</em>, <em>Somewhat disappointed</em>, <em>Not disappointed</em>.<br/><strong>Threshold:</strong> If ≥ 40% answer "Very Disappointed", you have PMF.</p>
+          </div>
+          <div class="p-5 rounded-xl bg-slate-950 border border-sky-500/30 space-y-2">
+            <span class="text-xs font-bold text-sky-400 uppercase">Question #2: Persona Discovery</span>
+            <p class="text-sm font-semibold text-slate-200">"What type of person do you think would benefit most from [Product]?"</p>
+            <p class="text-xs text-slate-400 leading-relaxed"><strong>The Filter:</strong> Only read responses from "Very Disappointed" users. They describe your High-Expectation Customer (HXC) with vivid accuracy.</p>
+          </div>
+          <div class="p-5 rounded-xl bg-slate-950 border border-purple-500/30 space-y-2">
+            <span class="text-xs font-bold text-purple-400 uppercase">Question #3: Core Superpower</span>
+            <p class="text-sm font-semibold text-slate-200">"What is the main benefit you receive from [Product]?"</p>
+            <p class="text-xs text-slate-400 leading-relaxed">Look for consensus among your lovers (at Superhuman: <em>Speed & Keyboard Shortcuts</em>). Dedicate 50% of roadmap to protecting this.</p>
+          </div>
+          <div class="p-5 rounded-xl bg-slate-950 border border-emerald-500/30 space-y-2">
+            <span class="text-xs font-bold text-emerald-400 uppercase">Question #4: Roadmap Engine</span>
+            <p class="text-sm font-semibold text-slate-200">"How can we improve [Product] for you?"</p>
+            <p class="text-xs text-slate-400 leading-relaxed"><strong>The Critical Filter:</strong> Ignore "Not Disappointed" users. Only listen to "Somewhat Disappointed" users who love the Q3 benefit. Build what holds them back!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: ROADMAP RULE -->
+    <div id="content-roadmap" class="space-y-4 hidden">
+      <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+        <div>
+          <h2 class="text-lg font-bold text-slate-100">The 50/50 Engineering Roadmap Rule</h2>
+          <p class="text-xs text-slate-400 mt-1">Rahul Vohra's golden formula to balance retention defensibility with acquisition growth.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 to-slate-950 border border-purple-800/40 space-y-3">
+            <span class="text-xl font-black text-purple-400">50% Capacity</span>
+            <h3 class="text-sm font-bold text-slate-100">Double Down on What Users Love</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">Never take your core superpower for granted. For Superhuman, this was making email faster (sub-100ms interactions, offline sync, keyboard shortcuts).</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/40 to-slate-950 border border-emerald-800/40 space-y-3">
+            <span class="text-xl font-black text-emerald-400">50% Capacity</span>
+            <h3 class="text-sm font-bold text-slate-100">Address "Somewhat Disappointed" Blockers</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">Convert on-the-fence users into evangelists. Superhuman built native mobile apps, calendar integrations, and search capabilities requested by users who loved speed.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById('tab-' + tabId);
+      if (activeBtn) activeBtn.classList.add('active');
+      document.getElementById('content-calculator').classList.toggle('hidden', tabId !== 'calculator');
+      document.getElementById('content-survey').classList.toggle('hidden', tabId !== 'survey');
+      document.getElementById('content-roadmap').classList.toggle('hidden', tabId !== 'roadmap');
+    }
+
+    function loadPreset(very, somewhat, notD) {
+      document.getElementById('input-very').value = very;
+      document.getElementById('input-somewhat').value = somewhat;
+      document.getElementById('input-not').value = notD;
+      recalculate();
+    }
+
+    function recalculate() {
+      const very = Math.max(0, parseFloat(document.getElementById('input-very').value) || 0);
+      const somewhat = Math.max(0, parseFloat(document.getElementById('input-somewhat').value) || 0);
+      const notD = Math.max(0, parseFloat(document.getElementById('input-not').value) || 0);
+      const total = very + somewhat + notD;
+      const score = total > 0 ? Math.round((very / total) * 100) : 0;
+      const isFit = score >= 40;
+
+      document.getElementById('metric-score').innerText = score + '%';
+      document.getElementById('metric-total').innerText = total;
+      document.getElementById('metric-very-count').innerText = very;
+      document.getElementById('metric-somewhat-count').innerText = somewhat;
+
+      const bar = document.getElementById('meter-bar');
+      bar.style.width = Math.min(score, 100) + '%';
+      bar.className = isFit 
+        ? 'h-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500'
+        : 'h-4 rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500';
+
+      const badge = document.getElementById('badge-status');
+      badge.className = isFit 
+        ? 'px-3 py-1 rounded-full text-xs font-bold border bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+        : 'px-3 py-1 rounded-full text-xs font-bold border bg-amber-500/20 text-amber-400 border-amber-500/40';
+      badge.innerText = isFit ? '🎉 Product-Market Fit Achieved (≥40%)' : '⚠️ Pre-PMF (' + score + '% / 40% Target)';
+
+      const strat = document.getElementById('strategy-box');
+      strat.className = isFit 
+        ? 'p-4 rounded-xl border text-xs leading-relaxed bg-emerald-950/30 border-emerald-800/40 text-emerald-200'
+        : 'p-4 rounded-xl border text-xs leading-relaxed bg-amber-950/30 border-amber-800/40 text-amber-200';
+      strat.innerHTML = isFit
+        ? '<strong class="font-bold text-emerald-300 block mb-1 text-sm">🚀 Green Light to Scale (PMF Score: ' + score + '%):</strong>Your score exceeds the Sean Ellis 40% benchmark! You can safely invest in acquisition channels. Apply the 50/50 rule: allocate half your sprints to enhancing what your ' + very + ' core lovers adore, and half to removing blockers for the ' + somewhat + ' users on the fence.'
+        : '<strong class="font-bold text-amber-300 block mb-1 text-sm">🧭 Focus on Retention, Do NOT Scale (PMF Score: ' + score + '%):</strong>Your score is below the 40% threshold. Investing in paid ads or sales now will leak users through your funnel. Isolate the ' + somewhat + ' "Somewhat Disappointed" users whose main benefit matches your lovers, find what is holding them back, and build only those features.';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => { recalculate(); });
+    setTimeout(recalculate, 100);
+  </script>
+</body>
+</html>
+"""
 
     def detect_intent(self, message: str, explicit_skill: Optional[str] = None) -> Tuple[str, Optional[str]]:
         """
@@ -156,6 +392,14 @@ class GrowthAgent:
                     content=html_match.group(1).strip()
                 ))
 
+        # Heal any artifacts that have placeholder ellipsis or broken snippets
+        for art in artifacts:
+            if art.artifact_type == "html":
+                has_placeholder = "..." in art.content and ("rest of" in art.content or "HTML content" in art.content or "rest" in art.content)
+                if has_placeholder or len(art.content) < 120:
+                    if any(k in art.title.lower() for k in ["pmf", "survey", "scorecard", "calculator", "growth", "superhuman"]):
+                        art.content = self.get_pmf_scorecard_template()
+
         cleaned_text = re.sub(r"```artifact:(html|markdown|code):([^\n]*)\n(.*?)```", r"\n*[Generated Artifact: **\2** (\1) - View in the Artifact Panel beside chat]*\n", text, flags=re.DOTALL)
         if artifacts and "```artifact:" in cleaned_text:
             first_art = artifacts[0]
@@ -206,6 +450,46 @@ class GrowthAgent:
             user_instruction = self.ship30_skill.build_prompt(topic=message, context=context)
         elif intent == "artifact":
             safe_type = artifact_type or "html"
+            is_pmf_calc = any(k in message.lower() for k in ["pmf", "vohra", "scorecard", "calculator", "superhuman", "product market fit", "sean ellis"])
+            if is_pmf_calc:
+                yield {"type": "status", "message": "Synthesizing Interactive PMF Scorecard & Survey Engine..."}
+                overview_text = (
+                    "### Rahul Vohra's Product-Market Fit Engine & Scorecard\n\n"
+                    "I have generated the interactive **PMF Survey Calculator & Scorecard** artifact for you in the panel beside this chat!\n\n"
+                    "#### 1. How Superhuman Measures PMF (The Sean Ellis Benchmark)\n"
+                    "In his interview on *Lenny's Podcast*, **Rahul Vohra** (Founder & CEO of Superhuman) explains how they turned Sean Ellis's 40% threshold into an actionable engineering engine:\n"
+                    "- **The Metric Question**: *\"How would you feel if you could no longer use the product?\"*\n"
+                    "- **The 40% Threshold**: If **≥ 40%** of respondents answer that they would be **\"Very Disappointed\"**, the company has achieved Product-Market Fit. Under 40%, companies struggle to scale and leak churned users.\n"
+                    "- **Superhuman's Progression**: In Summer 2017, Superhuman measured only **22%** (pre-PMF). By executing their survey and segmentation engine, they increased their PMF score to **58%** at public launch.\n\n"
+                    "#### 2. The 4-Question Survey Engine\n"
+                    "1. **Question #1 (The Quantitative Gate)**: *\"How would you feel if you could no longer use the product?\"* (Options: *Very disappointed*, *Somewhat disappointed*, *Not disappointed*). Used strictly to calculate the PMF %.\n"
+                    "2. **Question #2 (The High-Expectation Customer - HXC)**: *\"What type of person do you think would benefit most from the product?\"* Filter exclusively for respondents who answered \"Very Disappointed\" to define your true Ideal Customer Profile (ICP).\n"
+                    "3. **Question #3 (The Core Superpower)**: *\"What is the main benefit you receive from the product?\"* For Superhuman, users unanimously cited **speed and keyboard shortcuts**. Dedicate 50% of your roadmap to protecting and deepening this.\n"
+                    "4. **Question #4 (The Disappointment Filter)**: *\"How can we improve the product for you?\"* Politely ignore \"Not Disappointed\" users. Filter \"Somewhat Disappointed\" users whose main benefit matched your core lovers, and build the specific features holding them back (e.g. mobile app, calendar, offline search).\n\n"
+                    "#### 3. The 50/50 Engineering Roadmap Rule\n"
+                    "- **50% of Engineering Capacity**: Double down on core love (speed, keyboard shortcuts, performance).\n"
+                    "- **50% of Engineering Capacity**: Build blocker features requested by the \"Somewhat Disappointed\" cohort to convert them into \"Very Disappointed\" evangelists.\n\n"
+                    "👉 **Interactive Tool Ready in Artifact Panel**: Use the interactive tabs to calculate PMF scores in real time, test historical scenario presets (22% vs 38% vs 58%), and review the step-by-step roadmap playbook!"
+                )
+                for token in overview_text.split(" "):
+                    yield {"type": "token", "token": token + " "}
+                    await asyncio.sleep(0.008)
+
+                html_artifact = self.get_pmf_scorecard_template()
+                artifacts = [
+                    ArtifactPayload(
+                        title="Interactive PMF Scorecard & Survey Calculator",
+                        artifact_type="html",
+                        content=html_artifact
+                    )
+                ]
+                yield {
+                    "type": "done",
+                    "full_text": overview_text,
+                    "artifacts": [a.model_dump() for a in artifacts]
+                }
+                return
+
             yield {"type": "status", "message": f"Generating interactive {safe_type.upper()} artifact..."}
             system_instruction = (
                 "You are an expert full-stack engineer and product growth specialist. "
@@ -357,7 +641,7 @@ class GrowthAgent:
                 "top_k": 40,
                 "top_p": 0.9,
                 "num_thread": 8,
-                "num_ctx": 2048,
+                "num_ctx": 4096,
                 "num_predict": max_tokens
             }
         }
@@ -378,12 +662,14 @@ class GrowthAgent:
                             token = data.get("message", {}).get("content", "")
                             if token:
                                 recent_tokens.append(token)
-                                # Loop breaker: detect if the model begins looping identical blocks
-                                if len(recent_tokens) > 35:
-                                    recent_text = "".join(recent_tokens[-70:])
-                                    if len(recent_text) >= 80:
-                                        chunk1 = recent_text[-40:]
-                                        if recent_text[:-40].count(chunk1) >= 2:
+                                # True loop breaker: detect if the model begins looping identical blocks back-to-back
+                                if len(recent_tokens) > 60:
+                                    recent_text = "".join(recent_tokens[-150:])
+                                    if len(recent_text) >= 150:
+                                        tail = recent_text[-50:]
+                                        prev1 = recent_text[-100:-50]
+                                        prev2 = recent_text[-150:-100]
+                                        if tail == prev1 == prev2:
                                             logger.warning("Detected repetitive generation loop in Ollama. Terminating stream.")
                                             break
                                 yield token

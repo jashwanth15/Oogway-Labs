@@ -75,16 +75,15 @@ class GrowthAgent:
         return "qa", None
 
     def extract_artifacts(self, text: str) -> Tuple[str, List[ArtifactPayload]]:
-        """Extracts artifacts from text (supports ```artifact:... blocks, ```html blocks, and raw HTML)."""
+        """Extracts artifacts from text (supports ```artifact:... blocks, ```html blocks, unclosed blocks, and raw HTML)."""
         artifacts: List[ArtifactPayload] = []
 
         # 1. First check explicit ```artifact:(type):(title) blocks
-        pattern = re.compile(r"```artifact:(html|markdown|code):([^\n]+)\n(.*?)```", re.DOTALL)
+        pattern = re.compile(r"```artifact:(html|markdown|code):([^\n]*)\n(.*?)```", re.DOTALL)
         for match in pattern.finditer(text):
             art_type = match.group(1).strip()
-            art_title = match.group(2).strip()
+            art_title = match.group(2).strip() or "Interactive PMF Scorecard"
             content = match.group(3).strip()
-            # If it's html, verify it contains actual HTML tags
             if art_type == "html" and ("<" not in content or len(content) < 40):
                 continue
             artifacts.append(ArtifactPayload(
@@ -93,7 +92,7 @@ class GrowthAgent:
                 content=content
             ))
 
-        # 2. Check for standard ```html ... ``` code blocks (common in smaller models)
+        # 2. Check for closed ```html ... ``` code blocks
         if not artifacts and "```html" in text:
             html_blocks = re.findall(r"```html\s*\n(.*?)```", text, re.DOTALL)
             if html_blocks:
@@ -105,26 +104,49 @@ class GrowthAgent:
                         content=combined_html
                     ))
 
-        # 3. Check for unclosed ```artifact: tag if no closed block matched
+        # 3. Check for unclosed ```artifact: tag (if output was cut off mid-stream)
         if not artifacts and "```artifact:" in text:
-            unclosed_match = re.search(r"```artifact:(html|markdown|code):([^\n]+)\n(.*)$", text, re.DOTALL)
+            unclosed_match = re.search(r"```artifact:(html|markdown|code):([^\n]*)\n(.*)$", text, re.DOTALL)
             if unclosed_match:
                 art_type = unclosed_match.group(1).strip()
-                art_title = unclosed_match.group(2).strip()
+                art_title = unclosed_match.group(2).strip() or "Interactive PMF Scorecard"
                 raw_code = unclosed_match.group(3).strip()
-                if "<" in raw_code and "### " not in raw_code:
-                    if art_type == "html" and not raw_code.endswith("</html>"):
-                        if "</body>" not in raw_code:
-                            raw_code += "\n</body></html>"
-                        elif "</html>" not in raw_code:
-                            raw_code += "\n</html>"
+                if "<" in raw_code:
+                    if "<script" in raw_code and "</script>" not in raw_code:
+                        raw_code += "\n</script>"
+                    if "<form" in raw_code and "</form>" not in raw_code:
+                        raw_code += "\n</form>"
+                    if "</body>" not in raw_code:
+                        raw_code += "\n</body></html>"
+                    elif "</html>" not in raw_code:
+                        raw_code += "\n</html>"
                     artifacts.append(ArtifactPayload(
                         title=art_title,
                         artifact_type=art_type,
                         content=raw_code
                     ))
 
-        # 4. Fallback check for raw HTML markup
+        # 4. Check for unclosed ```html block
+        if not artifacts and "```html" in text:
+            unclosed_html = re.search(r"```html\s*\n(.*)$", text, re.DOTALL)
+            if unclosed_html:
+                raw_html = unclosed_html.group(1).strip()
+                if "<" in raw_html:
+                    if "<script" in raw_html and "</script>" not in raw_html:
+                        raw_html += "\n</script>"
+                    if "<form" in raw_html and "</form>" not in raw_html:
+                        raw_html += "\n</form>"
+                    if "</body>" not in raw_html:
+                        raw_html += "\n</body></html>"
+                    elif "</html>" not in raw_html:
+                        raw_html += "\n</html>"
+                    artifacts.append(ArtifactPayload(
+                        title="Interactive PMF Survey & Scorecard",
+                        artifact_type="html",
+                        content=raw_html
+                    ))
+
+        # 5. Fallback check for raw HTML markup
         if not artifacts and ("<!DOCTYPE html>" in text or ("<html" in text and "</html>" in text) or ("<form" in text and "</form>" in text)):
             html_match = re.search(r"(<!DOCTYPE html.*?>.*?</html>|<html.*?>.*?</html>|<form.*?</form>)", text, re.DOTALL | re.IGNORECASE)
             if html_match:
@@ -134,7 +156,10 @@ class GrowthAgent:
                     content=html_match.group(1).strip()
                 ))
 
-        cleaned_text = re.sub(r"```artifact:(html|markdown|code):([^\n]+)\n(.*?)```", r"\n*[Generated Artifact: **\2** (\1) - View in the Artifact Panel beside chat]*\n", text, flags=re.DOTALL)
+        cleaned_text = re.sub(r"```artifact:(html|markdown|code):([^\n]*)\n(.*?)```", r"\n*[Generated Artifact: **\2** (\1) - View in the Artifact Panel beside chat]*\n", text, flags=re.DOTALL)
+        if artifacts and "```artifact:" in cleaned_text:
+            first_art = artifacts[0]
+            cleaned_text = re.sub(r"```artifact:.*", f"\n*[Generated Artifact: **{first_art.title}** ({first_art.artifact_type.upper()}) - View in the Artifact Panel beside chat]*\n", cleaned_text, flags=re.DOTALL)
         return cleaned_text, artifacts
 
     async def stream_chat(
@@ -214,7 +239,7 @@ class GrowthAgent:
 
         # Step 3: Route to LLM Engine (Local Ollama vs Cloud)
         full_response = ""
-        max_predict = 550 if intent == "artifact" else (700 if intent == "ship30" else 280)
+        max_predict = 1400 if intent == "artifact" else (1000 if intent == "ship30" else 400)
         try:
             if model.startswith("ollama:") or (not model.startswith("claude") and not model.startswith("gpt")):
                 clean_model = model.replace("ollama:", "")

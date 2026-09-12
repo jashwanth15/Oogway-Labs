@@ -199,11 +199,15 @@ class GrowthAgent:
                 f"4. Style with clean, modern Tailwind CSS."
             )
         else:
-            system_instruction = SYSTEM_PROMPT
+            system_instruction = (
+                "You are The Lenny Growth Assistant. Answer the user's question directly, clearly, and concisely "
+                "based strictly on the provided podcast excerpts. Ground key points with guest names and timestamps."
+            )
             user_instruction = (
-                f"User Question: {message}\n\n"
-                f"### Knowledge Base Context from Lenny's Transcripts:\n{context}\n\n"
-                f"Answer the question clearly and concisely, grounding each point with citations to the guest and episode."
+                f"Here are verified excerpts from Lenny's Podcast:\n"
+                f"---\n{context}\n---\n\n"
+                f"Question: {message}\n\n"
+                f"Answer directly using the framework and insights above:"
             )
 
         yield {"type": "status", "message": f"Generating response with {model}..."}

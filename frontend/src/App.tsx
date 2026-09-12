@@ -11,7 +11,7 @@ export const App: React.FC = () => {
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
 
   const [models, setModels] = useState<ModelOption[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>('ollama:mistral:latest');
+  const [selectedModel, setSelectedModel] = useState<string>('ollama:qwen2.5:0.5b');
   const [health, setHealth] = useState<HealthStatus | null>(null);
 
   const [isStreaming, setIsStreaming] = useState(false);

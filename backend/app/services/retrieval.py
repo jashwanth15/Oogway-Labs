@@ -188,8 +188,8 @@ class HybridRetriever:
 
         return citations, has_sufficient_grounding
 
-    def format_context_for_prompt(self, citations: List[Citation], max_chunks: int = 4) -> str:
-        """Formats retrieved chunks into a prompt-ready context block."""
+    def format_context_for_prompt(self, citations: List[Citation], max_chunks: int = 2) -> str:
+        """Formats top retrieved chunks into a prompt-ready compact context block."""
         if not citations:
             return "No relevant transcripts found."
 
@@ -199,12 +199,15 @@ class HybridRetriever:
                 (ch for ch in self.chunks if ch.get("episode_slug") == c.episode_id and ch.get("timestamp") == c.timestamp),
                 None
             )
-            full_text = matching_chunk.get("text", c.snippet) if matching_chunk else c.snippet
+            raw_text = matching_chunk.get("text", c.snippet) if matching_chunk else c.snippet
+            # Keep focused excerpt (~500 chars) for ultra-fast CPU prompt processing
+            clean_excerpt = raw_text.strip()[:650]
+            if len(raw_text.strip()) > 650:
+                clean_excerpt += "..."
 
             block = (
                 f"[Source #{i}]: Episode '{c.title}' with {c.guest} (Timestamp: {c.timestamp})\n"
-                f"URL: {c.youtube_url or 'N/A'}\n"
-                f"Transcript excerpt:\n{full_text}\n"
+                f"Transcript excerpt:\n{clean_excerpt}\n"
             )
             context_blocks.append(block)
 

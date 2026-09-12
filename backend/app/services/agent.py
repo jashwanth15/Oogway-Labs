@@ -185,13 +185,30 @@ class GrowthAgent:
                     yield {"type": "token", "token": chunk}
         except Exception as e:
             logger.error(f"Inference error with model {model}: {e}")
-            error_fallback = (
-                f"\n\n> [!WARNING]\n"
-                f"> **Inference Error**: Could not connect to `{model}` ({str(e)}).\n"
-                f"> If using Ollama, ensure `ollama serve` is running. You may also select another model from the dropdown."
-            )
-            yield {"type": "token", "token": error_fallback}
-            full_response += error_fallback
+            err_detail = str(e) or type(e).__name__
+            # Automatic fallback to lightweight local model if a heavy model timed out
+            if "mistral" in model and settings.FALLBACK_LOCAL_MODEL:
+                yield {"type": "status", "message": f"Mistral timed out. Falling back to {settings.FALLBACK_LOCAL_MODEL}..."}
+                try:
+                    async for chunk in self._stream_ollama(settings.FALLBACK_LOCAL_MODEL, system_instruction, user_instruction, history):
+                        full_response += chunk
+                        yield {"type": "token", "token": chunk}
+                except Exception as fb_err:
+                    error_fallback = (
+                        f"\n\n> [!WARNING]\n"
+                        f"> **Inference Error**: Could not connect to `{model}` ({err_detail}).\n"
+                        f"> If using Ollama, ensure `ollama serve` is running. You may select `qwen2.5:0.5b` from the dropdown."
+                    )
+                    yield {"type": "token", "token": error_fallback}
+                    full_response += error_fallback
+            else:
+                error_fallback = (
+                    f"\n\n> [!WARNING]\n"
+                    f"> **Inference Error**: Could not connect to `{model}` ({err_detail}).\n"
+                    f"> If using Ollama, ensure `ollama serve` is running. You may select `qwen2.5:0.5b` from the dropdown."
+                )
+                yield {"type": "token", "token": error_fallback}
+                full_response += error_fallback
 
         # Step 4: Extract Artifacts (if generated or if Ship 30 essay is created)
         cleaned_text, artifacts = self.extract_artifacts(full_response)
@@ -224,11 +241,23 @@ class GrowthAgent:
             messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
         messages.append({"role": "user", "content": prompt})
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        timeout = httpx.Timeout(180.0, connect=20.0)
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+            "options": {
+                "temperature": 0.2,
+                "num_thread": 8,
+                "num_ctx": 1536,
+                "num_predict": 320
+            }
+        }
+        async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
                 "POST",
                 url,
-                json={"model": model, "messages": messages, "stream": True}
+                json=payload
             ) as response:
                 if response.status_code != 200:
                     err_msg = await response.aread()

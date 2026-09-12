@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # Local LLM (Ollama) configuration
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    DEFAULT_LOCAL_MODEL: str = os.getenv("DEFAULT_LOCAL_MODEL", "mistral:latest")
+    DEFAULT_LOCAL_MODEL: str = os.getenv("DEFAULT_LOCAL_MODEL", "qwen2.5:0.5b")
     FALLBACK_LOCAL_MODEL: str = os.getenv("FALLBACK_LOCAL_MODEL", "qwen2.5:0.5b")
 
     # Cloud LLM configurations

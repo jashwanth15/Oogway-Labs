@@ -527,7 +527,17 @@ class GrowthAgent:
         full_response = ""
         max_predict = 1400 if intent == "artifact" else (1000 if intent == "ship30" else 400)
         try:
-            if model.startswith("ollama:") or (not model.startswith("claude") and not model.startswith("gpt")):
+            if model.startswith("gemini"):
+                clean_model = model.replace("gemini:", "") if ":" in model else settings.DEFAULT_GEMINI_MODEL
+                async for chunk in self._stream_gemini(clean_model, system_instruction, user_instruction, history):
+                    full_response += chunk
+                    yield {"type": "token", "token": chunk}
+            elif model.startswith("groq"):
+                clean_model = model.replace("groq:", "") if ":" in model else settings.DEFAULT_GROQ_MODEL
+                async for chunk in self._stream_groq(clean_model, system_instruction, user_instruction, history):
+                    full_response += chunk
+                    yield {"type": "token", "token": chunk}
+            elif model.startswith("ollama:") or (not model.startswith("claude") and not model.startswith("gpt")):
                 clean_model = model.replace("ollama:", "")
                 async for chunk in self._stream_ollama(clean_model, system_instruction, user_instruction, history, max_tokens=max_predict):
                     full_response += chunk
@@ -730,3 +740,102 @@ class GrowthAgent:
             token = chunk.choices[0].delta.content or ""
             if token:
                 yield token
+
+    async def _stream_gemini(
+        self,
+        model: str,
+        system: str,
+        prompt: str,
+        history: List[Dict[str, str]]
+    ) -> AsyncGenerator[str, None]:
+        """Streams response from Google Gemini API via SSE."""
+        if not settings.GEMINI_API_KEY:
+            yield "> [!WARNING]\n> `GEMINI_API_KEY` is not configured in `.env`.\n\n"
+            return
+
+        clean_model = model.replace("models/", "").replace("gemini:", "") or settings.DEFAULT_GEMINI_MODEL
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:streamGenerateContent?key={settings.GEMINI_API_KEY}&alt=sse"
+
+        contents = []
+        for msg in history[-4:]:
+            role = "user" if msg.get("role") == "user" else "model"
+            contents.append({"role": role, "parts": [{"text": msg.get("content", "")}]})
+        contents.append({"role": "user", "parts": [{"text": prompt}]})
+
+        payload = {
+            "contents": contents,
+            "systemInstruction": {"parts": [{"text": system}]},
+            "generationConfig": {
+                "temperature": 0.3,
+                "maxOutputTokens": 2048
+            }
+        }
+
+        timeout = httpx.Timeout(60.0, connect=15.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            async with client.stream("POST", url, json=payload) as response:
+                if response.status_code != 200:
+                    err = await response.aread()
+                    raise RuntimeError(f"Gemini error {response.status_code}: {err.decode('utf-8', errors='ignore')}")
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        try:
+                            chunk_data = json.loads(line[6:])
+                            candidates = chunk_data.get("candidates", [])
+                            if candidates:
+                                parts = candidates[0].get("content", {}).get("parts", [])
+                                for p in parts:
+                                    text_piece = p.get("text", "")
+                                    if text_piece:
+                                        yield text_piece
+                        except Exception:
+                            continue
+
+    async def _stream_groq(
+        self,
+        model: str,
+        system: str,
+        prompt: str,
+        history: List[Dict[str, str]]
+    ) -> AsyncGenerator[str, None]:
+        """Streams response from Groq OpenAI-compatible API."""
+        if not settings.GROQ_API_KEY:
+            yield "> [!WARNING]\n> `GROQ_API_KEY` is not configured in `.env`.\n\n"
+            return
+
+        clean_model = model.replace("groq:", "") or settings.DEFAULT_GROQ_MODEL
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        messages = [{"role": "system", "content": system}]
+        for msg in history[-4:]:
+            messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": clean_model,
+            "messages": messages,
+            "stream": True,
+            "temperature": 0.3,
+            "max_tokens": 2048
+        }
+
+        timeout = httpx.Timeout(60.0, connect=15.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            async with client.stream("POST", url, headers=headers, json=payload) as response:
+                if response.status_code != 200:
+                    err = await response.aread()
+                    raise RuntimeError(f"Groq error {response.status_code}: {err.decode('utf-8', errors='ignore')}")
+                async for line in response.aiter_lines():
+                    if line.startswith("data: ") and not line.startswith("data: [DONE]"):
+                        try:
+                            chunk_data = json.loads(line[6:])
+                            delta = chunk_data.get("choices", [{}])[0].get("delta", {})
+                            content = delta.get("content", "")
+                            if content:
+                                yield content
+                        except Exception:
+                            continue

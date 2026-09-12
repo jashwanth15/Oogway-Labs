@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY", None)
     DEFAULT_OPENAI_MODEL: str = os.getenv("DEFAULT_OPENAI_MODEL", "gpt-4o")
 
+    # Free Cloud Providers (Google AI Studio & Groq)
+    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", None)
+    DEFAULT_GEMINI_MODEL: str = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-2.5-flash")
+
+    GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY", None)
+    DEFAULT_GROQ_MODEL: str = os.getenv("DEFAULT_GROQ_MODEL", "openai/gpt-oss-120b")
+
     # Data paths
     TRANSCRIPTS_PATH: str = os.getenv("TRANSCRIPTS_PATH", "data/transcripts")
     INDEX_CACHE_PATH: str = os.getenv("INDEX_CACHE_PATH", "data/index_cache")

@@ -64,7 +64,23 @@ async def list_models():
             "is_active": False
         })
 
-    # Cloud Models
+    # Free High-Performance Cloud Models
+    models.append({
+        "id": "gemini:gemini-2.5-flash",
+        "name": "Cloud: Gemini 2.5 Flash (Google - Free)",
+        "provider": "google",
+        "is_local": False,
+        "is_active": bool(settings.GEMINI_API_KEY)
+    })
+    models.append({
+        "id": "groq:openai/gpt-oss-120b",
+        "name": "Cloud: GPT-OSS 120B (Groq - Free & Fast)",
+        "provider": "groq",
+        "is_local": False,
+        "is_active": bool(settings.GROQ_API_KEY)
+    })
+
+    # Standard Cloud Models
     models.append({
         "id": "claude-3-5-sonnet",
         "name": "Cloud: Claude 3.5 Sonnet (Anthropic)",

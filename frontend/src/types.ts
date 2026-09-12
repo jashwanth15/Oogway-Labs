@@ -38,7 +38,7 @@ export interface Session {
 export interface ModelOption {
   id: string;
   name: string;
-  provider: 'ollama' | 'anthropic' | 'openai';
+  provider: 'ollama' | 'anthropic' | 'openai' | 'google' | 'groq';
   is_local: boolean;
   is_active: boolean;
 }

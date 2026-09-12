@@ -41,6 +41,15 @@ def clean_tokens(text: str, filter_stopwords: bool = True) -> List[str]:
     return tokens
 
 
+DIRECTIVE_WORDS = {
+    "build", "create", "generate", "make", "write", "interactive", "html",
+    "css", "tailwind", "styling", "calculator", "widget", "scorecard",
+    "tool", "canvas", "essay", "article", "style", "based", "template",
+    "dashboard", "component", "prototype", "code", "snippet", "please",
+    "using", "give", "show", "tell", "explain"
+}
+
+
 class HybridRetriever:
     _instance: Optional["HybridRetriever"] = None
 
@@ -91,7 +100,7 @@ class HybridRetriever:
         query: str,
         top_k: int = 5,
         guest_filter: Optional[str] = None,
-        min_score: float = 12.0
+        min_score: float = 10.0
     ) -> Tuple[List[Citation], bool]:
         """
         Searches transcript chunks using BM25 with guest and topic boosting.
@@ -106,7 +115,11 @@ class HybridRetriever:
         if not query_tokens:
             return [], False
 
-        raw_scores = self.bm25.get_scores(query_tokens)
+        # Filter out UI/artifact directive words (e.g. 'build', 'html', 'calculator') so the focus stays on domain topics
+        content_tokens = [w for w in query_tokens if w not in DIRECTIVE_WORDS]
+        tokens_to_search = content_tokens if len(content_tokens) >= 2 else query_tokens
+
+        raw_scores = self.bm25.get_scores(tokens_to_search)
         query_lower = query.lower()
 
         # Identify mentioned guests
@@ -122,11 +135,11 @@ class HybridRetriever:
                 topic_boost_slugs.update(eps)
 
         final_scores = []
-        unique_query_set = set(query_tokens)
+        unique_query_set = set(tokens_to_search)
         num_query_tokens = len(unique_query_set)
 
-        # Stricter term coverage required for multi-term queries
-        min_required_coverage = 0.50 if num_query_tokens >= 4 else 0.33
+        # Stricter term coverage required for general queries; lower if a known guest is mentioned
+        min_required_coverage = 0.25 if mentioned_slugs else (0.45 if num_query_tokens >= 4 else 0.33)
 
         for idx, score in enumerate(raw_scores):
             chunk = self.chunks[idx]

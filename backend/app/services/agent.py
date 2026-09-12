@@ -59,6 +59,10 @@ class GrowthAgent:
         Returns (intent, target_format).
         """
         if explicit_skill:
+            if explicit_skill == "artifact":
+                msg_lower = message.lower()
+                art_type = "markdown" if any(t in msg_lower for t in ["markdown", "prd", "framework doc", "template"]) else "html"
+                return "artifact", art_type
             return explicit_skill, None
 
         msg_lower = message.lower()
@@ -172,14 +176,15 @@ class GrowthAgent:
             system_instruction = self.ship30_skill.get_system_prompt()
             user_instruction = self.ship30_skill.build_prompt(topic=message, context=context)
         elif intent == "artifact":
-            yield {"type": "status", "message": f"Generating interactive {artifact_type.upper()} artifact..."}
+            safe_type = artifact_type or "html"
+            yield {"type": "status", "message": f"Generating interactive {safe_type.upper()} artifact..."}
             system_instruction = SYSTEM_PROMPT
             user_instruction = (
                 f"User Request: {message}\n\n"
                 f"### Knowledge Base Context:\n{context}\n\n"
                 f"CRITICAL: Ground your response in the podcast insights above. "
-                f"Provide a complete, production-ready {artifact_type.upper()} artifact enclosed in:\n"
-                f"```artifact:{artifact_type}:Title of Artifact\n"
+                f"Provide a complete, production-ready {safe_type.upper()} artifact enclosed in:\n"
+                f"```artifact:{safe_type}:Title of Artifact\n"
                 f"(your complete code or markdown here)\n"
                 f"```\n"
                 f"If HTML, ensure it has modern, clean styling using Tailwind CSS CDN or inline CSS."
@@ -196,7 +201,7 @@ class GrowthAgent:
 
         # Step 3: Route to LLM Engine (Local Ollama vs Cloud)
         full_response = ""
-        max_predict = 950 if intent == "artifact" else (1200 if intent == "ship30" else 350)
+        max_predict = 550 if intent == "artifact" else (700 if intent == "ship30" else 280)
         try:
             if model.startswith("ollama:") or (not model.startswith("claude") and not model.startswith("gpt")):
                 clean_model = model.replace("ollama:", "")
@@ -304,6 +309,7 @@ class GrowthAgent:
             "model": model,
             "messages": messages,
             "stream": True,
+            "keep_alive": "60m",
             "options": {
                 "temperature": 0.2,
                 "num_thread": 8,

@@ -207,21 +207,21 @@ class GrowthAgent:
         elif intent == "artifact":
             safe_type = artifact_type or "html"
             yield {"type": "status", "message": f"Generating interactive {safe_type.upper()} artifact..."}
-            system_instruction = SYSTEM_PROMPT
+            system_instruction = (
+                "You are an expert full-stack engineer and product growth specialist. "
+                "Output ONLY the production-ready code artifact block. "
+                "Do NOT write introductions, conversational filler, or repetitive text before or after the code."
+            )
             user_instruction = (
                 f"User Request: {message}\n\n"
                 f"### Knowledge Base Context:\n{context}\n\n"
-                f"CRITICAL REQUIREMENTS:\n"
-                f"1. Ground your response in the podcast insights above (e.g. Rahul Vohra's 40% rule for PMF).\n"
-                f"2. Provide a complete, production-ready {safe_type.upper()} artifact enclosed in:\n"
-                f"```artifact:{safe_type}:Title of Artifact\n"
-                f"(your complete code or markdown here)\n"
+                f"INSTRUCTIONS:\n"
+                f"1. Ground the tool in the podcast insights above (e.g. Rahul Vohra's 40% rule for PMF).\n"
+                f"2. Output the complete interactive code enclosed in:\n"
+                f"```artifact:{safe_type}:Interactive PMF Scorecard\n"
+                f"(complete code with inputs, buttons, and client-side <script> calculations here)\n"
                 f"```\n"
-                f"3. For HTML artifacts, it MUST be fully interactive with client-side JavaScript. "
-                f"Include an interactive script so clicking 'Submit' or 'Calculate' runs client-side calculations "
-                f"(e.g. onsubmit=\"event.preventDefault(); calculate();\"), displays results, progress bars, and recommendations. "
-                f"Never submit to external URLs or use action='...'.\n"
-                f"4. Style with clean, modern Tailwind CSS."
+                f"3. Start directly with ```artifact:{safe_type}:Interactive PMF Scorecard now:"
             )
         else:
             system_instruction = (
@@ -349,16 +349,17 @@ class GrowthAgent:
             "stream": True,
             "keep_alive": "60m",
             "options": {
-                "temperature": 0.3,
-                "repeat_penalty": 1.18,
-                "repeat_last_n": 64,
+                "temperature": 0.2,
+                "repeat_penalty": 1.25,
+                "repeat_last_n": 256,
                 "top_k": 40,
                 "top_p": 0.9,
                 "num_thread": 8,
-                "num_ctx": 1536,
+                "num_ctx": 2048,
                 "num_predict": max_tokens
             }
         }
+        recent_tokens: List[str] = []
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
                 "POST",
@@ -374,6 +375,15 @@ class GrowthAgent:
                             data = json.loads(line)
                             token = data.get("message", {}).get("content", "")
                             if token:
+                                recent_tokens.append(token)
+                                # Loop breaker: detect if the model begins looping identical blocks
+                                if len(recent_tokens) > 35:
+                                    recent_text = "".join(recent_tokens[-70:])
+                                    if len(recent_text) >= 80:
+                                        chunk1 = recent_text[-40:]
+                                        if recent_text[:-40].count(chunk1) >= 2:
+                                            logger.warning("Detected repetitive generation loop in Ollama. Terminating stream.")
+                                            break
                                 yield token
                         except Exception:
                             continue

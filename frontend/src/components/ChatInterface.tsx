@@ -15,7 +15,8 @@ import {
   FileCode,
   ArrowRight,
   ShieldCheck,
-  Compass
+  Compass,
+  Square
 } from 'lucide-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -23,6 +24,7 @@ import DOMPurify from 'dompurify';
 interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (text: string, skill?: string) => void;
+  onStopStreaming?: () => void;
   isStreaming: boolean;
   statusText: string | null;
   models: ModelOption[];
@@ -67,6 +69,7 @@ const STARTER_PROMPTS = [
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messages,
   onSendMessage,
+  onStopStreaming,
   isStreaming,
   statusText,
   models,
@@ -316,18 +319,30 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               placeholder="Ask anything grounded in 300+ Lenny's Podcast transcripts... (Enter to send, Shift+Enter for newline)"
               className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 resize-none outline-none px-2 py-1 leading-relaxed"
             />
-            <button
-              type="submit"
-              disabled={!input.trim() || isStreaming}
-              className={`p-2 rounded-xl transition-all ${
-                input.trim() && !isStreaming
-                  ? 'bg-brand-600 hover:bg-brand-500 text-slate-950 font-bold shadow-md shadow-brand-600/20 active:scale-95'
-                  : 'bg-slate-800 text-slate-400 cursor-not-allowed'
-              }`}
-              title="Send Message"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+            {isStreaming ? (
+              <button
+                type="button"
+                onClick={onStopStreaming}
+                className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold shadow-md shadow-red-600/30 active:scale-95 flex items-center gap-1.5 text-xs cursor-pointer transition-all animate-pulse"
+                title="Stop Generating"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                <span>Stop</span>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                className={`p-2 rounded-xl transition-all ${
+                  input.trim()
+                    ? 'bg-brand-600 hover:bg-brand-500 text-slate-950 font-bold shadow-md shadow-brand-600/20 active:scale-95'
+                    : 'bg-slate-800 text-slate-400 cursor-not-allowed'
+                }`}
+                title="Send Message"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            )}
           </form>
 
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">

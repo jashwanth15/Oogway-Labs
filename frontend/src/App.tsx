@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SessionSidebar } from './components/SessionSidebar';
 import { ChatInterface } from './components/ChatInterface';
 import { ArtifactViewer } from './components/ArtifactViewer';
@@ -17,6 +17,19 @@ export const App: React.FC = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleStopStreaming = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+    setStatusText(null);
+    setMessages((prev) =>
+      prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m))
+    );
+  };
 
   // 1. Initial Load: Health, Models, and Sessions
   useEffect(() => {
@@ -141,10 +154,14 @@ export const App: React.FC = () => {
     setIsStreaming(true);
     setStatusText('Contacting Lenny Knowledge Base...');
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           session_id: activeSessionId,
           message: text,
@@ -241,6 +258,10 @@ export const App: React.FC = () => {
       // Refresh session list to reflect new title & updated timestamp
       fetchSessions();
     } catch (e: any) {
+      if (e.name === 'AbortError') {
+        console.log('Stream aborted by user.');
+        return;
+      }
       console.error('Chat error:', e);
       setStatusText(null);
       setMessages((prev) =>
@@ -257,6 +278,7 @@ export const App: React.FC = () => {
     } finally {
       setIsStreaming(false);
       setStatusText(null);
+      abortControllerRef.current = null;
     }
   };
 
@@ -279,6 +301,7 @@ export const App: React.FC = () => {
         <ChatInterface
           messages={messages}
           onSendMessage={handleSendMessage}
+          onStopStreaming={handleStopStreaming}
           isStreaming={isStreaming}
           statusText={statusText}
           models={models}

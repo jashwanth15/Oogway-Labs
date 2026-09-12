@@ -316,7 +316,11 @@ class GrowthAgent:
             "stream": True,
             "keep_alive": "60m",
             "options": {
-                "temperature": 0.2,
+                "temperature": 0.3,
+                "repeat_penalty": 1.18,
+                "repeat_last_n": 64,
+                "top_k": 40,
+                "top_p": 0.9,
                 "num_thread": 8,
                 "num_ctx": 1536,
                 "num_predict": max_tokens

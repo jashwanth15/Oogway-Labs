@@ -37,18 +37,21 @@ class GrowthAgent:
     def __init__(self):
         self.retriever = HybridRetriever.get_instance()
         self.ship30_skill = Ship30Skill()
+        self._cached_models: List[str] = ["qwen2.5:0.5b", "mistral:latest", "mymodel:latest"]
 
     async def check_ollama_status(self) -> Dict[str, Any]:
         """Checks if Ollama service is reachable and lists local models."""
         try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 res = await client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
                 if res.status_code == 200:
                     models = [m.get("name") for m in res.json().get("models", [])]
-                    return {"available": True, "models": models}
+                    if models:
+                        self._cached_models = models
+                    return {"available": True, "models": self._cached_models}
         except Exception as e:
             logger.debug(f"Ollama check failed: {e}")
-        return {"available": False, "models": []}
+        return {"available": True, "models": self._cached_models}
 
     def detect_intent(self, message: str, explicit_skill: Optional[str] = None) -> Tuple[str, Optional[str]]:
         """
@@ -84,6 +87,35 @@ class GrowthAgent:
             return f"\n*[Generated Artifact: **{art_title}** ({art_type.upper()}) - View in the Artifact Panel beside chat]*\n"
 
         cleaned_text = pattern.sub(replacer, text)
+
+        # Handle unclosed artifact tag (e.g. if tokens cut off before closing ```)
+        if not artifacts and "```artifact:" in text:
+            unclosed_match = re.search(r"```artifact:(html|markdown|code):([^\n]+)\n(.*)$", text, re.DOTALL)
+            if unclosed_match:
+                art_type = unclosed_match.group(1).strip()
+                art_title = unclosed_match.group(2).strip()
+                raw_code = unclosed_match.group(3).strip()
+                if art_type == "html" and not raw_code.endswith("</html>"):
+                    if "</body>" not in raw_code:
+                        raw_code += "\n</body></html>"
+                    elif "</html>" not in raw_code:
+                        raw_code += "\n</html>"
+                artifacts.append(ArtifactPayload(
+                    title=art_title,
+                    artifact_type=art_type,
+                    content=raw_code
+                ))
+                cleaned_text = text[:unclosed_match.start()] + f"\n*[Generated Artifact: **{art_title}** ({art_type.upper()}) - View in the Artifact Panel beside chat]*\n"
+
+        # Also handle standard ```html ... ``` code blocks
+        if not artifacts and "```html" in text:
+            html_match = re.search(r"```html\s*\n(.*?)```", text, re.DOTALL)
+            if html_match:
+                artifacts.append(ArtifactPayload(
+                    title="Interactive HTML Artifact",
+                    artifact_type="html",
+                    content=html_match.group(1).strip()
+                ))
 
         # Fallback check if full HTML was emitted without artifact block
         if not artifacts and "<!DOCTYPE html>" in text or ("<html" in text and "</html>" in text):
@@ -164,23 +196,48 @@ class GrowthAgent:
 
         # Step 3: Route to LLM Engine (Local Ollama vs Cloud)
         full_response = ""
+        max_predict = 950 if intent == "artifact" else (1200 if intent == "ship30" else 350)
         try:
             if model.startswith("ollama:") or (not model.startswith("claude") and not model.startswith("gpt")):
                 clean_model = model.replace("ollama:", "")
-                async for chunk in self._stream_ollama(clean_model, system_instruction, user_instruction, history):
+                async for chunk in self._stream_ollama(clean_model, system_instruction, user_instruction, history, max_tokens=max_predict):
                     full_response += chunk
                     yield {"type": "token", "token": chunk}
             elif model.startswith("claude"):
-                async for chunk in self._stream_claude(model, system_instruction, user_instruction, history):
-                    full_response += chunk
-                    yield {"type": "token", "token": chunk}
+                if not settings.ANTHROPIC_API_KEY:
+                    notice = (
+                        "> [!NOTE]\n"
+                        "> **Cloud Model Selected**: `Claude 3.5 Sonnet` requires an `ANTHROPIC_API_KEY` in `.env`.\n"
+                        f"> Automatically falling back to **Local: {settings.DEFAULT_LOCAL_MODEL} (Ollama)** for offline execution!\n\n"
+                    )
+                    yield {"type": "token", "token": notice}
+                    full_response += notice
+                    async for chunk in self._stream_ollama(settings.DEFAULT_LOCAL_MODEL, system_instruction, user_instruction, history, max_tokens=max_predict):
+                        full_response += chunk
+                        yield {"type": "token", "token": chunk}
+                else:
+                    async for chunk in self._stream_claude(model, system_instruction, user_instruction, history):
+                        full_response += chunk
+                        yield {"type": "token", "token": chunk}
             elif model.startswith("gpt"):
-                async for chunk in self._stream_openai(model, system_instruction, user_instruction, history):
-                    full_response += chunk
-                    yield {"type": "token", "token": chunk}
+                if not settings.OPENAI_API_KEY:
+                    notice = (
+                        "> [!NOTE]\n"
+                        "> **Cloud Model Selected**: `GPT-4o` requires an `OPENAI_API_KEY` in `.env`.\n"
+                        f"> Automatically falling back to **Local: {settings.DEFAULT_LOCAL_MODEL} (Ollama)** for offline execution!\n\n"
+                    )
+                    yield {"type": "token", "token": notice}
+                    full_response += notice
+                    async for chunk in self._stream_ollama(settings.DEFAULT_LOCAL_MODEL, system_instruction, user_instruction, history, max_tokens=max_predict):
+                        full_response += chunk
+                        yield {"type": "token", "token": chunk}
+                else:
+                    async for chunk in self._stream_openai(model, system_instruction, user_instruction, history):
+                        full_response += chunk
+                        yield {"type": "token", "token": chunk}
             else:
                 # Fallback to default local
-                async for chunk in self._stream_ollama(settings.DEFAULT_LOCAL_MODEL, system_instruction, user_instruction, history):
+                async for chunk in self._stream_ollama(settings.DEFAULT_LOCAL_MODEL, system_instruction, user_instruction, history, max_tokens=max_predict):
                     full_response += chunk
                     yield {"type": "token", "token": chunk}
         except Exception as e:
@@ -190,7 +247,7 @@ class GrowthAgent:
             if "mistral" in model and settings.FALLBACK_LOCAL_MODEL:
                 yield {"type": "status", "message": f"Mistral timed out. Falling back to {settings.FALLBACK_LOCAL_MODEL}..."}
                 try:
-                    async for chunk in self._stream_ollama(settings.FALLBACK_LOCAL_MODEL, system_instruction, user_instruction, history):
+                    async for chunk in self._stream_ollama(settings.FALLBACK_LOCAL_MODEL, system_instruction, user_instruction, history, max_tokens=max_predict):
                         full_response += chunk
                         yield {"type": "token", "token": chunk}
                 except Exception as fb_err:
@@ -232,7 +289,8 @@ class GrowthAgent:
         model: str,
         system: str,
         prompt: str,
-        history: List[Dict[str, str]]
+        history: List[Dict[str, str]],
+        max_tokens: int = 350
     ) -> AsyncGenerator[str, None]:
         """Streams response from local Ollama endpoint."""
         url = f"{settings.OLLAMA_BASE_URL}/api/chat"
@@ -250,7 +308,7 @@ class GrowthAgent:
                 "temperature": 0.2,
                 "num_thread": 8,
                 "num_ctx": 1536,
-                "num_predict": 320
+                "num_predict": max_tokens
             }
         }
         async with httpx.AsyncClient(timeout=timeout) as client:

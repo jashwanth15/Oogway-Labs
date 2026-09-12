@@ -63,6 +63,49 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
         form.parentNode.insertBefore(resultContainer, form.nextSibling);
       }
       
+      // Helper to generate full PMF scorecard HTML
+      window.generatePmfGauge = function(v, s, n) {
+        const tot = v + s + n;
+        if (tot <= 0) return '';
+        const score = Math.round((v / tot) * 100);
+        const isFit = score >= 40;
+        return \`
+          <div class="border-b border-slate-800 pb-3 mb-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                <span>📊 Rahul Vohra PMF Scorecard Result</span>
+              </h3>
+              <span class="text-xs px-2.5 py-1 rounded-full font-bold \${isFit ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'}">
+                \${isFit ? '🎉 Product-Market Fit Achieved' : '⚠️ Below 40% Benchmark'}
+              </span>
+            </div>
+            <div class="mt-3">
+              <div class="flex justify-between text-xs mb-1 font-medium">
+                <span class="text-slate-300">"Very Disappointed" Ratio</span>
+                <span class="font-bold text-lg \${isFit ? 'text-emerald-400' : 'text-amber-400'}">\${score}%</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-3.5 overflow-hidden border border-slate-700">
+                <div class="h-3.5 rounded-full \${isFit ? 'bg-emerald-500' : 'bg-amber-500'} transition-all duration-500" style="width: \${Math.min(score, 100)}%"></div>
+              </div>
+              <div class="flex justify-between text-[11px] text-slate-400 mt-1.5">
+                <span>0%</span>
+                <span class="text-amber-400 font-semibold">▲ 40% Target (Superhuman Benchmark)</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs text-slate-300">
+            <p><strong>Total Survey Responses:</strong> \${tot} (Very: \${v}, Somewhat: \${s}, Not: \${n})</p>
+            <div class="p-3 rounded-xl \${isFit ? 'bg-emerald-950/40 border border-emerald-800/40' : 'bg-amber-950/40 border border-amber-800/40'}">
+              <p class="font-bold text-slate-100 mb-1">\${isFit ? '🚀 Growth Strategy (Post-PMF):' : '🧭 Roadmap Strategy (Pre-PMF):'}</p>
+              <p class="leading-relaxed">\${isFit 
+                ? 'Superhuman reached 58% and unlocked hyper-growth. Spend 50% of your sprint capacity doubling down on your core love (speed/shortcuts), and 50% fixing blockers for the Somewhat Disappointed cohort.' 
+                : 'Focus solely on the high-expectation customers who answered "Somewhat Disappointed" and whose primary benefit matched what "Very Disappointed" users love. Discover what holds them back and build those features.'}</p>
+            </div>
+          </div>
+        \`;
+      };
+
       const formData = new FormData(form);
       const data = {};
       for (let [k, v] of formData.entries()) {
@@ -76,66 +119,160 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       const total = very + somewhat + notD;
       
       if (total > 0) {
-        const pmfScore = Math.round((very / total) * 100);
-        const isFit = pmfScore >= 40;
-        resultContainer.innerHTML = \`
-          <div class="border-b border-slate-800 pb-3 mb-4">
-            <div class="flex items-center justify-between">
-              <h3 class="text-base font-bold text-slate-100">Rahul Vohra PMF Scorecard Result</h3>
-              <span class="text-xs px-2.5 py-1 rounded-full font-bold \${isFit ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'}">
-                \${isFit ? '🎉 Product-Market Fit Achieved' : '⚠️ Below 40% Benchmark'}
-              </span>
-            </div>
-            <div class="mt-3">
-              <div class="flex justify-between text-xs mb-1 font-medium">
-                <span>Very Disappointed Score</span>
-                <span class="font-bold text-lg \${isFit ? 'text-emerald-400' : 'text-amber-400'}">\${pmfScore}%</span>
-              </div>
-              <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-                <div class="h-3 rounded-full \${isFit ? 'bg-emerald-500' : 'bg-amber-500'}" style="width: \${Math.min(pmfScore, 100)}%"></div>
-              </div>
-              <div class="flex justify-between text-[11px] text-slate-400 mt-1">
-                <span>0%</span>
-                <span class="text-amber-400 font-semibold">40% Target (Superhuman Benchmark)</span>
-                <span>100%</span>
-              </div>
-            </div>
-          </div>
-          <div class="space-y-2 text-xs text-slate-300">
-            <p><strong>Total Respondents:</strong> \${total} (Very: \${very}, Somewhat: \${somewhat}, Not: \${notD})</p>
-            <p><strong>Rahul Vohra's Strategy:</strong> \${isFit 
-              ? 'Double down on the core features loved by "Very Disappointed" users and politely disregard feedback from "Not Disappointed" users.' 
-              : 'Focus solely on the high-expectation customers who answered "Somewhat Disappointed" and analyze what is holding them back from answering "Very Disappointed".'}</p>
-          </div>
-        \`;
+        resultContainer.innerHTML = window.generatePmfGauge(very, somewhat, notD);
       } else {
         const entries = Object.entries(data);
+        const textCorpus = entries.map(([k, v]) => \`\${k} \${v}\`).join(' ').toLowerCase();
+
+        let frameworkContent = '';
+        if (textCorpus.includes('disappoint') || textCorpus.includes('disappear') || textCorpus.includes('q1') || textCorpus.includes('benchmark') || textCorpus.includes('pmf')) {
+          frameworkContent = \`
+            <div class="p-4 rounded-xl bg-slate-950 border border-amber-500/40 text-xs text-slate-300 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-amber-400 text-sm flex items-center gap-1.5">
+                  <span>🎯 Question 1 Evaluation: The Core PMF Benchmark Metric</span>
+                </span>
+                <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold">Sean Ellis 40% Rule</span>
+              </div>
+              <p class="leading-relaxed">
+                <strong>Survey Question:</strong> <em>"How would you feel if you could no longer use [Product]?"</em><br/>
+                <strong>Options:</strong> (1) Very disappointed, (2) Somewhat disappointed, (3) Not disappointed.
+              </p>
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1.5">
+                <p class="font-bold text-slate-100">Why this question matters according to Rahul Vohra:</p>
+                <p class="text-slate-300 leading-relaxed">
+                  This single question provides the quantitative threshold for Product-Market Fit. If <strong>≥ 40%</strong> of respondents answer "Very Disappointed", you have PMF (Superhuman scored 58% at launch). If &lt; 40%, marketing will only churn users.
+                </p>
+              </div>
+              <div class="pt-2 border-t border-slate-800">
+                <p class="text-xs font-semibold text-slate-200 mb-2">⚡ Interactive Benchmark Simulation (Click to view score):</p>
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" onclick="document.getElementById('sim-gauge').innerHTML = window.generatePmfGauge(22, 45, 33)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold border border-slate-700 transition">
+                    📉 Summer 2017: 22% (Pre-PMF)
+                  </button>
+                  <button type="button" onclick="document.getElementById('sim-gauge').innerHTML = window.generatePmfGauge(38, 32, 30)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold border border-slate-700 transition">
+                    ⚖️ 38% (Near PMF)
+                  </button>
+                  <button type="button" onclick="document.getElementById('sim-gauge').innerHTML = window.generatePmfGauge(58, 28, 14)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-semibold border border-slate-700 transition">
+                    🚀 Superhuman Launch: 58% (Fit Achieved!)
+                  </button>
+                </div>
+                <div id="sim-gauge" class="mt-3"></div>
+              </div>
+            </div>
+          \`;
+        } else if (textCorpus.includes('person') || textCorpus.includes('benefit most') || textCorpus.includes('who') || textCorpus.includes('target') || textCorpus.includes('icp') || textCorpus.includes('persona') || textCorpus.includes('customer') || textCorpus.includes('q2')) {
+          frameworkContent = \`
+            <div class="p-4 rounded-xl bg-slate-950 border border-sky-500/40 text-xs text-slate-300 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-sky-400 text-sm flex items-center gap-1.5">
+                  <span>👤 Question 2 Evaluation: High-Expectation Customer (HXC)</span>
+                </span>
+                <span class="text-[11px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 font-semibold">Persona Discovery</span>
+              </div>
+              <p class="leading-relaxed">
+                <strong>Survey Question:</strong> <em>"What type of person do you think would benefit most from [Product]?"</em>
+              </p>
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1.5">
+                <p class="font-bold text-slate-100">Rahul Vohra's High-Expectation Customer (HXC):</p>
+                <p class="text-slate-300 leading-relaxed">
+                  Only look at responses from users who said <strong>"Very Disappointed"</strong> in Question 1. These users describe themselves vividly.
+                </p>
+                <div class="mt-2 text-sky-300 bg-sky-950/30 p-2.5 rounded border border-sky-800/40">
+                  <strong>Superhuman's Insight:</strong> Their HXC was not generic email users, but executives, founders, and sales leaders managing 100+ emails/day where speed determined career success.
+                </div>
+              </div>
+            </div>
+          \`;
+        } else if (textCorpus.includes('benefit') || textCorpus.includes('love') || textCorpus.includes('value') || textCorpus.includes('favorite') || textCorpus.includes('why') || textCorpus.includes('speed') || textCorpus.includes('q3')) {
+          frameworkContent = \`
+            <div class="p-4 rounded-xl bg-slate-950 border border-purple-500/40 text-xs text-slate-300 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-purple-400 text-sm flex items-center gap-1.5">
+                  <span>💎 Question 3 Evaluation: Core Value Proposition (What to Protect)</span>
+                </span>
+                <span class="text-[11px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 font-semibold">The 50% Rule</span>
+              </div>
+              <p class="leading-relaxed">
+                <strong>Survey Question:</strong> <em>"What is the main benefit you receive from [Product]?"</em>
+              </p>
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2">
+                <p class="font-bold text-slate-100">Protecting Your Core Superpower:</p>
+                <p class="text-slate-300 leading-relaxed">
+                  Look at the unanimous response from "Very Disappointed" users. At Superhuman, it was <strong>Speed & Keyboard Shortcuts</strong>.
+                </p>
+                <div class="p-2.5 rounded bg-purple-950/30 border border-purple-800/40 text-purple-300">
+                  <strong>Action:</strong> Allocate <strong>50%</strong> of all engineering resources solely to making this core value even faster and more reliable. Never trade core speed for extra features.
+                </div>
+              </div>
+            </div>
+          \`;
+        } else if (textCorpus.includes('improve') || textCorpus.includes('missing') || textCorpus.includes('holding back') || textCorpus.includes('wish') || textCorpus.includes('better') || textCorpus.includes('fix') || textCorpus.includes('feature') || textCorpus.includes('q4')) {
+          frameworkContent = \`
+            <div class="p-4 rounded-xl bg-slate-950 border border-amber-500/40 text-xs text-slate-300 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-amber-400 text-sm flex items-center gap-1.5">
+                  <span>🛠️ Question 4 Evaluation: Product Roadmap & The Disappointment Filter</span>
+                </span>
+                <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold">The Filter</span>
+              </div>
+              <p class="leading-relaxed">
+                <strong>Survey Question:</strong> <em>"How can we improve [Product] for you?"</em>
+              </p>
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2">
+                <p class="font-bold text-slate-100">Rahul Vohra's Critical Roadmap Filter:</p>
+                <ol class="list-decimal list-inside space-y-1 text-slate-300 leading-relaxed">
+                  <li><span class="text-red-400 font-semibold">Ignore "Not Disappointed" users:</span> Their suggestions are distractions.</li>
+                  <li><span class="text-amber-400 font-semibold">Filter "Somewhat Disappointed":</span> Only keep those who cited speed as their main benefit in Q3.</li>
+                  <li><span class="text-emerald-400 font-semibold">Dedicate other 50% of roadmap:</span> Build only what held this group back (Superhuman built mobile app, search, integrations).</li>
+                </ol>
+              </div>
+            </div>
+          \`;
+        } else {
+          frameworkContent = \`
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-3">
+              <p class="font-bold text-amber-400 flex items-center gap-1.5 text-sm">
+                <span>💡 Rahul Vohra Feedback Segmentation Analysis:</span>
+              </p>
+              <p class="leading-relaxed">
+                In Superhuman's survey engine, feedback is segmented strictly by user enthusiasm to prevent roadmaps from becoming bloated:
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40">
+                  <span class="text-emerald-400 font-bold block mb-1">Very Disappointed (Lovers)</span>
+                  <p class="text-[11px] text-slate-300">Identify what they love in Q3. Spend 50% of roadmap doubling down on this.</p>
+                </div>
+                <div class="p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/40">
+                  <span class="text-amber-400 font-bold block mb-1">Somewhat Disappointed (Opportunity)</span>
+                  <p class="text-[11px] text-slate-300">Find users who love the same core benefit. Spend 50% fixing their blockers in Q4.</p>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                  <span class="text-slate-400 font-bold block mb-1">Not Disappointed (Distraction)</span>
+                  <p class="text-[11px] text-slate-400">Politely disregard all suggestions. They will pull your product off course.</p>
+                </div>
+              </div>
+            </div>
+          \`;
+        }
+
         const entriesHtml = entries.length > 0
           ? entries.map(([k, v]) => \`
             <div class="py-1.5 border-b border-slate-800 flex flex-col sm:flex-row sm:justify-between">
-              <span class="text-slate-400 text-xs font-semibold capitalize">\${k.replace(/[-_]/g, ' ')}:</span>
+              <span class="text-slate-400 text-xs font-semibold capitalize">\${k.replace(/[-_\[\]]/g, ' ').trim()}:</span>
               <span class="text-slate-200 text-xs font-medium">\${v || '(no response entered)'}</span>
             </div>
           \`).join('')
-          : '<p class="text-slate-300 text-xs">Response captured!</p>';
-        
+          : '<p class="text-slate-300 text-xs">Response submitted!</p>';
+
         resultContainer.innerHTML = \`
           <div class="flex items-center gap-2 mb-3 text-emerald-400 font-bold text-sm">
-            <span>✓ Survey Response Submitted & Evaluated</span>
+            <span>✓ Survey Input Evaluated with Rahul Vohra Engine</span>
           </div>
           <div class="space-y-1 mb-4">
             \${entriesHtml}
           </div>
-          <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-1.5">
-            <p class="font-bold text-amber-400 flex items-center gap-1.5">
-              <span>💡 Rahul Vohra Framework Evaluation:</span>
-            </p>
-            <p class="leading-relaxed">
-              Superhuman evaluated customer feedback by grouping responses based on user enthusiasm. 
-              Only build roadmap items that move "Somewhat Disappointed" users into "Very Disappointed", 
-              while continuing to delight your highest-converting user segment.
-            </p>
-          </div>
+          \${frameworkContent}
         \`;
       }
       resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

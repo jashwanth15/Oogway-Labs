@@ -217,7 +217,7 @@ class GrowthAgent:
                 f"### Knowledge Base Context:\n{context}\n\n"
                 f"INSTRUCTIONS:\n"
                 f"1. Build a complete, functional {safe_type.upper()} calculator tool using Rahul Vohra's 40% PMF Framework.\n"
-                f"2. Use standard HTML: input fields for response counts ('Very Disappointed', 'Somewhat Disappointed', 'Not Disappointed'), "
+                f"2. Use standard HTML: include input fields for response counts (<input type='number' name='very' value='45'>, <input type='number' name='somewhat' value='30'>, <input type='number' name='not' value='25'>), "
                 f"a Calculate button, a progress bar, and a results card.\n"
                 f"3. Enclose the complete code inside:\n"
                 f"```artifact:{safe_type}:Interactive PMF Scorecard\n"

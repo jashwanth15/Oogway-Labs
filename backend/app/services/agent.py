@@ -182,12 +182,17 @@ class GrowthAgent:
             user_instruction = (
                 f"User Request: {message}\n\n"
                 f"### Knowledge Base Context:\n{context}\n\n"
-                f"CRITICAL: Ground your response in the podcast insights above. "
-                f"Provide a complete, production-ready {safe_type.upper()} artifact enclosed in:\n"
+                f"CRITICAL REQUIREMENTS:\n"
+                f"1. Ground your response in the podcast insights above (e.g. Rahul Vohra's 40% rule for PMF).\n"
+                f"2. Provide a complete, production-ready {safe_type.upper()} artifact enclosed in:\n"
                 f"```artifact:{safe_type}:Title of Artifact\n"
                 f"(your complete code or markdown here)\n"
                 f"```\n"
-                f"If HTML, ensure it has modern, clean styling using Tailwind CSS CDN or inline CSS."
+                f"3. For HTML artifacts, it MUST be fully interactive with client-side JavaScript. "
+                f"Include an interactive script so clicking 'Submit' or 'Calculate' runs client-side calculations "
+                f"(e.g. onsubmit=\"event.preventDefault(); calculate();\"), displays results, progress bars, and recommendations. "
+                f"Never submit to external URLs or use action='...'.\n"
+                f"4. Style with clean, modern Tailwind CSS."
             )
         else:
             system_instruction = SYSTEM_PROMPT

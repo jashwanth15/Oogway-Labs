@@ -43,15 +43,12 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
         <div className="p-4 border-b border-slate-800">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
-                <Sparkles className="w-4 h-4 text-slate-950 font-bold" />
-              </div>
               <div>
-                <h1 className="text-sm font-bold text-slate-100 tracking-tight">
-                  Lenny Growth AI
+                <h1 className="text-base font-extrabold text-slate-100 tracking-tight">
+                  Oogway Labs
                 </h1>
-                <p className="text-[11px] text-brand-400 font-medium">
-                  Internal PM & Growth Assistant
+                <p className="text-[11px] text-brand-500 font-bold uppercase tracking-wider">
+                  FDE Growth Assistant
                 </p>
               </div>
             </div>

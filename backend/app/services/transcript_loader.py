@@ -7,8 +7,16 @@ from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-TIMESTAMP_PATTERN = re.compile(r"\((\d{2}:\d{2}:\d{2})\)")
-SPEAKER_PATTERN = re.compile(r"([A-Za-z\s\.\'\-]+)\s*\((\d{2}:\d{2}:\d{2})\):")
+TIMESTAMP_PATTERN = re.compile(r"\((?:(\d{1,2}):)?(\d{1,2}):(\d{2})\)")
+SPEAKER_PATTERN = re.compile(r"([A-Za-z\s\.\'\-]+)\s*\((?:(\d{1,2}):)?(\d{1,2}):(\d{2})\):")
+
+
+def normalize_timestamp_match(match: re.Match) -> str:
+    """Normalizes matched timestamp groups into HH:MM:SS format."""
+    h, m, s = match.groups()
+    if h is not None:
+        return f"{int(h):02d}:{int(m):02d}:{int(s):02d}"
+    return f"00:{int(m):02d}:{int(s):02d}"
 
 
 class TranscriptLoader:
@@ -67,7 +75,8 @@ class TranscriptLoader:
                 pass
             body = "---".join(parts[2:]).strip()
 
-        guest = metadata.get("guest") or slug.replace("-", " ").title()
+        raw_guest = metadata.get("guest") or slug.replace("-", " ").title()
+        guest = re.sub(r"\s+2\.0$", "", str(raw_guest)).strip()
         title = metadata.get("title") or f"Conversation with {guest}"
         youtube_url = metadata.get("youtube_url")
         keywords = metadata.get("keywords") or []
@@ -84,7 +93,7 @@ class TranscriptLoader:
             # Check for timestamp
             ts_match = TIMESTAMP_PATTERN.search(para)
             if ts_match and not current_timestamp:
-                current_timestamp = ts_match.group(1)
+                current_timestamp = normalize_timestamp_match(ts_match)
 
             current_text.append(para)
             current_length += len(para.split())

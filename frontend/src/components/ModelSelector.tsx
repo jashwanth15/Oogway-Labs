@@ -10,10 +10,10 @@ interface ModelSelectorProps {
 }
 
 const FALLBACK_MODELS: ModelOption[] = [
+  { id: 'ollama:lenny-growth:latest', name: 'Local: lenny-growth:latest (Trained Growth Agent)', provider: 'ollama', is_local: true, is_active: true },
+  { id: 'ollama:mistral:latest', name: 'Local: mistral:latest (Ollama)', provider: 'ollama', is_local: true, is_active: true },
   { id: 'gemini:gemini-2.5-flash', name: 'Cloud: Gemini 2.5 Flash (Google - Free)', provider: 'google', is_local: false, is_active: true },
   { id: 'groq:openai/gpt-oss-120b', name: 'Cloud: GPT-OSS 120B (Groq - Free & Fast)', provider: 'groq', is_local: false, is_active: true },
-  { id: 'ollama:qwen2.5:0.5b', name: 'Local: qwen2.5:0.5b (Ollama)', provider: 'ollama', is_local: true, is_active: true },
-  { id: 'ollama:mistral:latest', name: 'Local: mistral:latest (Ollama)', provider: 'ollama', is_local: true, is_active: false },
   { id: 'claude-3-5-sonnet', name: 'Cloud: Claude 3.5 Sonnet (Anthropic)', provider: 'anthropic', is_local: false, is_active: false },
   { id: 'gpt-4o', name: 'Cloud: GPT-4o (OpenAI)', provider: 'openai', is_local: false, is_active: false }
 ];

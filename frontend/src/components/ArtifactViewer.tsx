@@ -18,9 +18,10 @@ import DOMPurify from 'dompurify';
 interface ArtifactViewerProps {
   artifact: Artifact;
   onClose: () => void;
+  theme?: 'dark' | 'light';
 }
 
-export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClose }) => {
+export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClose, theme = 'light' }) => {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -278,19 +279,40 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   });
-</script>
+<\/script>
 `;
 
     const injectedStyle = `
-<script src="https://cdn.tailwindcss.com"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+<script src="https://cdn.tailwindcss.com"><\/script>
+<script>
+  tailwind.config = {
+    darkMode: 'class'
+  }
+<\/script>
 <style>
-  body { font-family: system-ui, -apple-system, sans-serif; background-color: #0b1120 !important; color: #f1f5f9 !important; padding: 1.5rem !important; }
-  input, textarea, select { background-color: #1e293b !important; color: #f8fafc !important; border: 1px solid #334155 !important; border-radius: 0.5rem !important; padding: 0.5rem 0.75rem !important; width: 100% !important; margin-top: 0.25rem !important; margin-bottom: 0.75rem !important; outline: none !important; }
+  html.dark body { font-family: system-ui, -apple-system, sans-serif; background-color: #0b1120 !important; color: #f1f5f9 !important; padding: 1.5rem !important; }
+  html:not(.dark) body { font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc !important; color: #0f172a !important; padding: 1.5rem !important; }
+  
+  html.dark input, html.dark textarea, html.dark select { background-color: #1e293b !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
+  html:not(.dark) input, html:not(.dark) textarea, html:not(.dark) select { background-color: #ffffff !important; color: #0f172a !important; border: 1px solid #cbd5e1 !important; }
+  
+  input, textarea, select { border-radius: 0.5rem !important; padding: 0.5rem 0.75rem !important; width: 100% !important; margin-top: 0.25rem !important; margin-bottom: 0.75rem !important; outline: none !important; }
   input:focus, textarea:focus, select:focus { border-color: #f59e0b !important; ring: 2px #f59e0b !important; }
-  label { color: #cbd5e1 !important; font-weight: 500 !important; font-size: 0.875rem !important; }
+  
+  html.dark label { color: #cbd5e1 !important; font-weight: 500 !important; font-size: 0.875rem !important; }
+  html:not(.dark) label { color: #475569 !important; font-weight: 500 !important; font-size: 0.875rem !important; }
+  
   button[type="submit"], input[type="submit"], .btn-primary { background: linear-gradient(135deg, #d97706, #f59e0b) !important; color: #020617 !important; font-weight: 700 !important; padding: 0.6rem 1.25rem !important; border-radius: 0.75rem !important; cursor: pointer !important; border: none !important; transition: all 0.2s !important; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2) !important; }
   button[type="submit"]:hover, input[type="submit"]:hover { filter: brightness(1.1) !important; transform: translateY(-1px) !important; }
 </style>
+<script>
+  if ('${theme}' === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+</script>
 `;
 
     if (rawHtml.includes('<!DOCTYPE html>') || rawHtml.includes('<html')) {

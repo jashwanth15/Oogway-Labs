@@ -11,6 +11,7 @@ class Citation(BaseModel):
     timestamp: Optional[str] = None
     snippet: str
     relevance_score: Optional[float] = None
+    chunk_id: Optional[str] = None
 
 
 class ArtifactPayload(BaseModel):

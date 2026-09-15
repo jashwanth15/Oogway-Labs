@@ -1,4 +1,4 @@
-import logging
+import httpx
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,13 +6,9 @@ from backend.app.config import settings
 from backend.app.db.database import init_db
 from backend.app.services.retrieval import HybridRetriever
 from backend.app.api.routes import router as api_router
+from backend.app.logger import setup_logger
 
-# Configure structured logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 @asynccontextmanager
@@ -24,6 +20,18 @@ async def lifespan(app: FastAPI):
     # Warm up Hybrid Retriever index
     retriever = HybridRetriever.get_instance()
     logger.info(f"Retriever warmed up with {len(retriever.chunks)} transcript chunks.")
+    
+    # Pre-warm local Ollama model into RAM so first user query has zero cold-start delay
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            await client.post(
+                f"{settings.OLLAMA_BASE_URL}/api/generate",
+                json={"model": settings.DEFAULT_LOCAL_MODEL, "keep_alive": "60m"}
+            )
+            logger.info(f"Pre-warmed local model '{settings.DEFAULT_LOCAL_MODEL}' into RAM.")
+    except Exception as e:
+        logger.debug(f"Local model pre-warming skipped: {e}")
+        
     yield
     logger.info("Shutting down The Lenny Growth Assistant API...")
 

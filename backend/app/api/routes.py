@@ -39,22 +39,33 @@ async def health_check():
     return await get_system_health()
 
 
+@router.get("/evals/benchmark")
+async def run_system_evals():
+    """Executes quantitative RAG & Grounding benchmark suite returning latency, precision, and accuracy metrics."""
+    from backend.evals.benchmark import run_benchmark
+    return run_benchmark()
+
+
 @router.get("/models")
 async def list_models():
     """Lists available local Ollama models and configured cloud LLMs."""
     ollama_info = await agent.check_ollama_status()
     models = []
 
-    # Local Ollama Models
+    # Curated Local Ollama Models (hide raw base layers and experimental models)
+    CURATED_LOCAL = ["lenny-growth:latest", "mistral:latest"]
     if ollama_info.get("available"):
-        for m in ollama_info.get("models", []):
-            models.append({
-                "id": f"ollama:{m}",
-                "name": f"Local: {m} (Ollama)",
-                "provider": "ollama",
-                "is_local": True,
-                "is_active": m == settings.DEFAULT_LOCAL_MODEL
-            })
+        installed = ollama_info.get("models", [])
+        for m in CURATED_LOCAL:
+            if m in installed:
+                is_trained = "lenny-growth" in m
+                models.append({
+                    "id": f"ollama:{m}",
+                    "name": f"Local: {m} (Trained Growth Agent)" if is_trained else f"Local: {m} (Ollama)",
+                    "provider": "ollama",
+                    "is_local": True,
+                    "is_active": True
+                })
     else:
         models.append({
             "id": f"ollama:{settings.DEFAULT_LOCAL_MODEL}",

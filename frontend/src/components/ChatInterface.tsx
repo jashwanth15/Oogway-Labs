@@ -16,10 +16,16 @@ import {
   ArrowRight,
   ShieldCheck,
   Compass,
-  Square
+  Square,
+  Copy,
+  Check,
+  Download,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import { FrameworkStudioModal } from './FrameworkStudioModal';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -33,6 +39,8 @@ interface ChatInterfaceProps {
   onOpenArtifact: (art: Artifact) => void;
   onToggleSidebar: () => void;
   health: HealthStatus | null;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
 }
 
 const STARTER_PROMPTS = [
@@ -77,11 +85,72 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onSelectModel,
   onOpenArtifact,
   onToggleSidebar,
-  health
+  health,
+  theme,
+  onToggleTheme
 }) => {
   const [input, setInput] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isFrameworkStudioOpen, setIsFrameworkStudioOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleCopy = async (content: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(id);
+      setTimeout(() => {
+        setCopiedId((current) => (current === id ? null : current));
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  const handleExportBrief = () => {
+    let brief = `# Lenny Growth Advisory Brief: Strategic Synthesis\n`;
+    brief += `**Generated:** ${new Date().toLocaleDateString('en-US', { dateStyle: 'full' })} at ${new Date().toLocaleTimeString()}\n`;
+    brief += `**LLM Engine:** ${selectedModel}\n`;
+    brief += `**Knowledge Base:** 303 Episodes of Lenny's Podcast (15,251 Semantic Chunks)\n`;
+    brief += `**Grounding Guardrail:** 100% Verbatim Transcript Attributions\n\n`;
+    brief += `---\n\n`;
+    brief += `## 1. Executive Discussion & Strategic Syntheses\n\n`;
+
+    messages.forEach((m, idx) => {
+      if (m.role === 'user') {
+        brief += `### User Inquiry #${idx + 1}\n> ${m.content}\n\n`;
+      } else if (m.role === 'assistant') {
+        brief += `#### Lenny Assistant Strategic Response:\n${m.content}\n\n`;
+        if (m.citations && m.citations.length > 0) {
+          brief += `**Verified Podcast Citations Referenced:**\n`;
+          m.citations.forEach((c, cIdx) => {
+            brief += `- [${cIdx + 1}] **${c.guest}** — *"${c.title}"* (${c.timestamp || 'N/A'})\n`;
+            brief += `  - Excerpt: *"${c.snippet}"*\n`;
+            if (c.youtube_url) {
+              brief += `  - Link: ${c.youtube_url}\n`;
+            }
+          });
+          brief += `\n`;
+        }
+        if (m.artifacts && m.artifacts.length > 0) {
+          brief += `**Generated Strategic Artifacts:**\n`;
+          m.artifacts.forEach((art) => {
+            brief += `- **${art.title}** (${art.artifact_type.toUpperCase()})\n`;
+          });
+          brief += `\n`;
+        }
+        brief += `---\n\n`;
+      }
+    });
+
+    const blob = new Blob([brief], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lenny-growth-advisory-brief-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,8 +197,38 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         </div>
 
-        {/* Model Switcher & Status */}
+        {/* Actions & Model Switcher */}
         <div className="flex items-center gap-2">
+          {onToggleTheme && (
+            <button
+              onClick={onToggleTheme}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Toggle theme"
+            >
+              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsFrameworkStudioOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600/20 via-indigo-600/20 to-brand-600/20 text-brand-300 hover:text-white hover:bg-slate-800 border border-brand-500/30 text-xs font-bold transition-all shadow-sm active:scale-95"
+            title="Launch interactive frameworks, scorecards, and matrices"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-brand-400 animate-pulse" />
+            <span className="hidden sm:inline">Framework Studio</span>
+          </button>
+
+          {messages.length > 0 && (
+            <button
+              onClick={handleExportBrief}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/90 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700 text-xs font-medium transition-all"
+              title="Export session as strategic advisory brief"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-400" />
+              <span className="hidden md:inline">Export Brief</span>
+            </button>
+          )}
+
           <ModelSelector
             models={models}
             selectedModel={selectedModel}
@@ -143,37 +242,91 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
         {messages.length === 0 ? (
           /* Empty / Welcome State */
-          <div className="max-w-3xl mx-auto py-8 text-center animate-in fade-in duration-300">
+          <div className="max-w-3xl mx-auto py-6 text-center animate-in fade-in duration-300">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-500 to-emerald-400 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-brand-500/20">
               <Sparkles className="w-7 h-7 text-slate-950 font-bold" />
             </div>
             <h2 className="text-2xl font-extrabold text-slate-100 tracking-tight mb-2">
               What growth challenge are we solving today?
             </h2>
-            <p className="text-sm text-slate-400 max-w-xl mx-auto mb-8 leading-relaxed">
+            <p className="text-sm text-slate-400 max-w-xl mx-auto mb-6 leading-relaxed">
               Synthesizing frameworks, benchmarks, and strategies directly from 303 episodes of Lenny's Podcast. Verified sources, zero hallucinations, and live artifact generation.
             </p>
+
+            {/* Framework Studio Quick Launch Callout */}
+            <div className="mb-6 max-w-xl mx-auto p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-brand-950/30 to-indigo-950/60 border border-brand-500/30 flex items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-2.5 text-left">
+                <div className="p-2 rounded-xl bg-brand-500/20 text-brand-400">
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-100">Lenny's Growth Framework Studio</h4>
+                  <p className="text-[11px] text-slate-400">Launch DHM Scorecard, LNO Matrix, or 40% PMF Engine directly</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsFrameworkStudioOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-slate-950 font-bold text-xs shadow-sm transition-all whitespace-nowrap active:scale-95"
+              >
+                Open Studio
+              </button>
+            </div>
 
             {/* Starter Prompt Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-2xl mx-auto">
               {STARTER_PROMPTS.map((p, i) => {
                 const Icon = p.icon;
+                const promptKey = `starter-${i}`;
                 return (
-                  <button
+                  <div
                     key={i}
-                    onClick={() => onSendMessage(p.prompt, p.skill)}
-                    className="p-4 rounded-xl bg-slate-900/90 border border-slate-800/90 hover:border-brand-500/50 hover:bg-slate-900 transition-all duration-150 group text-left shadow-sm hover:shadow-md hover:shadow-brand-500/5"
+                    className="p-4 rounded-xl bg-slate-900/90 border border-slate-800/90 hover:border-brand-500/50 hover:bg-slate-900 transition-all duration-150 group text-left shadow-sm hover:shadow-md hover:shadow-brand-500/5 flex flex-col justify-between"
                   >
-                    <div className="flex items-center gap-2.5 mb-1.5 text-brand-400">
-                      <Icon className="w-4 h-4" />
-                      <span className="text-xs font-bold text-slate-200 group-hover:text-brand-300 transition-colors">
-                        {p.title}
-                      </span>
+                    <div
+                      onClick={() => onSendMessage(p.prompt, p.skill)}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5 mb-1.5 text-brand-400">
+                        <Icon className="w-4 h-4" />
+                        <span className="text-xs font-bold text-slate-200 group-hover:text-brand-300 transition-colors">
+                          {p.title}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                        {p.desc}
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                      {p.desc}
-                    </p>
-                  </button>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+                      <button
+                        onClick={() => onSendMessage(p.prompt, p.skill)}
+                        className="text-[11px] font-semibold text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors"
+                      >
+                        <span>Ask</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopy(p.prompt, promptKey);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                        title="Copy prompt text"
+                      >
+                        {copiedId === promptKey ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400 font-medium">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -214,6 +367,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         }}
                       />
                     )}
+                  </div>
+
+                  {/* Copy Action Button below prompts and texts */}
+                  <div className={`mt-1 flex items-center ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <button
+                      onClick={() => handleCopy(m.content, m.id)}
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-colors"
+                      title={m.role === 'user' ? "Copy prompt" : "Copy text"}
+                    >
+                      {copiedId === m.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-emerald-400 font-medium">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{m.role === 'user' ? "Copy prompt" : "Copy text"}</span>
+                        </>
+                      )}
+                    </button>
                   </div>
 
                   {/* Grounded Citations Row */}
@@ -351,6 +525,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         </div>
       </footer>
+
+      {/* Framework Studio Modal */}
+      <FrameworkStudioModal
+        isOpen={isFrameworkStudioOpen}
+        onClose={() => setIsFrameworkStudioOpen(false)}
+        onOpenArtifact={onOpenArtifact}
+        onSendMessage={onSendMessage}
+      />
     </div>
   );
 };

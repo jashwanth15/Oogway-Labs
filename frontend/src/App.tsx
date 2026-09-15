@@ -11,13 +11,22 @@ export const App: React.FC = () => {
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
 
   const [models, setModels] = useState<ModelOption[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>('ollama:qwen2.5:0.5b');
+  const [selectedModel, setSelectedModel] = useState<string>('ollama:lenny-growth:latest');
   const [health, setHealth] = useState<HealthStatus | null>(null);
 
   const [isStreaming, setIsStreaming] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   const handleStopStreaming = () => {
     if (abortControllerRef.current) {
@@ -57,7 +66,12 @@ export const App: React.FC = () => {
         const data = await res.json();
         setModels(data.models || []);
         if (data.default) {
-          setSelectedModel(data.default);
+          setSelectedModel((prev) => {
+            if (!prev || prev === 'ollama:qwen2.5:0.5b') {
+              return data.default;
+            }
+            return prev;
+          });
         }
       }
     } catch (e) {
@@ -310,6 +324,8 @@ export const App: React.FC = () => {
           onOpenArtifact={(art) => setActiveArtifact(art)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           health={health}
+          theme={theme}
+          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         />
       </main>
 
@@ -319,6 +335,7 @@ export const App: React.FC = () => {
           <ArtifactViewer
             artifact={activeArtifact}
             onClose={() => setActiveArtifact(null)}
+            theme={theme}
           />
         </aside>
       )}

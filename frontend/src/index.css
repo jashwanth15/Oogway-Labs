@@ -3,8 +3,40 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-white: 2 6 23; /* slate 950 */
+    --color-black: 248 250 252; /* slate 50 */
+    --slate-50: 2 6 23;
+    --slate-100: 15 23 42;
+    --slate-200: 30 41 59;
+    --slate-300: 51 65 85;
+    --slate-400: 71 85 105;
+    --slate-500: 100 116 139;
+    --slate-600: 148 163 184;
+    --slate-700: 203 213 225;
+    --slate-800: 226 232 240;
+    --slate-900: 241 245 249;
+    --slate-950: 248 250 252;
+  }
+
+  .dark {
+    --color-white: 255 255 255;
+    --color-black: 0 0 0;
+    --slate-50: 248 250 252;
+    --slate-100: 241 245 249;
+    --slate-200: 226 232 240;
+    --slate-300: 203 213 225;
+    --slate-400: 148 163 184;
+    --slate-500: 100 116 139;
+    --slate-600: 71 85 105;
+    --slate-700: 51 65 85;
+    --slate-800: 30 41 59;
+    --slate-900: 15 23 42;
+    --slate-950: 2 6 23;
+  }
+
   body {
-    @apply bg-slate-950 text-slate-100 antialiased selection:bg-brand-500/30 selection:text-brand-100;
+    @apply bg-slate-950 text-slate-100 antialiased selection:bg-brand-500/30 selection:text-brand-100 transition-colors duration-300;
   }
 }
 
@@ -19,20 +51,20 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: rgb(var(--slate-700));
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgb(var(--slate-600));
 }
 
 /* Markdown styling inside chat */
 .prose-dark {
-  color: #e2e8f0;
+  color: rgb(var(--slate-200));
 }
 .prose-dark h1, .prose-dark h2, .prose-dark h3 {
-  color: #f8fafc;
+  color: rgb(var(--slate-50));
   font-weight: 700;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
@@ -58,11 +90,11 @@
   margin-bottom: 0.35rem;
 }
 .prose-dark strong {
-  color: #f8fafc;
+  color: rgb(var(--slate-50));
   font-weight: 600;
 }
 .prose-dark code {
-  background-color: #1e293b;
+  background-color: rgb(var(--slate-800));
   padding: 0.15rem 0.35rem;
   border-radius: 0.25rem;
   font-family: 'JetBrains Mono', monospace;
@@ -70,22 +102,22 @@
   color: #38bdf8;
 }
 .prose-dark pre {
-  background-color: #0f172a;
+  background-color: rgb(var(--slate-900));
   padding: 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
-  border: 1px solid #1e293b;
+  border: 1px solid rgb(var(--slate-800));
   margin-bottom: 1rem;
 }
 .prose-dark pre code {
   background-color: transparent;
   padding: 0;
-  color: #cbd5e1;
+  color: rgb(var(--slate-300));
 }
 .prose-dark blockquote {
   border-left: 3px solid #22c55e;
   padding-left: 1rem;
   font-style: italic;
-  color: #94a3b8;
+  color: rgb(var(--slate-400));
   margin: 1rem 0;
 }

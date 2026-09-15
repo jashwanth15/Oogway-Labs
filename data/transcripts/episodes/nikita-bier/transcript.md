@@ -1,15 +1,10 @@
 ---
 guest: Nikita Bier
-title: Driving alignment within teams, work-life balance, and the changing PM landscape
-  | Nikita Miller
-youtube_url: https://www.youtube.com/watch?v=4PhfAbRQpbI
-video_id: 4PhfAbRQpbI
-publish_date: 2023-04-06
-description: 'Nikita Miller is a product leader, angel investor, and advisor. She
-  has built and led product teams at companies ranging from early-stage startups to
-  multinationals, and she is currently SVP...
-
-  '
+title: "How to consistently go viral: Nikita Bier's playbook for winning at consumer apps | Nikita Bier"
+youtube_url: https://www.youtube.com/watch?v=k9QTVII_lkg
+video_id: k9QTVII_lkg
+publish_date: 2023-01-26
+description: "Nikita Bier is the co-founder of tbh (acquired by Facebook) and Gas (acquired by Discord). He shares his playbook for launching viral consumer apps, seeding into high schools, and building virality."
 duration_seconds: 3560.0
 duration: '59:20'
 view_count: 6020
@@ -32,7 +27,7 @@ keywords:
 - conversion
 ---
 
-# Driving alignment within teams, work-life balance, and the changing PM landscape | Nikita Miller
+# How to consistently go viral: Nikita Bier's playbook for winning at consumer apps | Nikita Bier
 
 ## Transcript
 

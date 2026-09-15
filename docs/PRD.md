@@ -78,3 +78,34 @@
 * **AC-4 (Artifact Isolation)**: HTML/CSS artifacts render in an isolated sandboxed iframe without script injection to the host window.
 * **AC-5 (Persistence)**: Chat sessions, messages, and artifacts persist across browser reloads in PostgreSQL / SQLite.
 * **AC-6 (One-Command Startup)**: Running `docker-compose up` boots the entire application (API, DB, UI) with zero manual database migration steps.
+
+---
+
+## 4. Architecture Decision Log (ADR)
+
+### ADR-01: BM25 + Guest/Topic Boosting over Dense Embeddings
+**Decision:** Lexical BM25 search with domain-specific boosting instead of dense vector embeddings.  
+**Rationale:** BM25 is interpretable, fast, and requires no GPU at inference time. Guest-name boosting and 89-topic index compensate for the recall gap for this narrow domain.  
+**Trade-off accepted:** Lower recall for paraphrased queries. Mitigated by curated topic mappings.  
+**What I'd build next:** A lightweight `all-MiniLM-L6` embedding second-pass for queries scoring near the 30.0 threshold.
+
+### ADR-02: Anthropic Agent SDK for Intent Routing (with Local Keyword Fallback)
+**Decision:** Use Anthropic SDK tool-calling (`claude-3-5-haiku`) for intent routing.  
+**Honest disclosure:** The original implementation used keyword string-matching (`detect_intent`). This was identified as a gap and migrated to genuine SDK tool-use. The fallback to local keyword routing is retained for fully offline Ollama deployments.  
+**Trade-off accepted:** +200–400ms latency per request for intent classification. Fully acceptable given the advisory nature of the product.
+
+### ADR-03: `min_score = 30.0` Anti-Hallucination Threshold
+**Decision:** Reject retrieval results when the maximum boosted BM25 score is below 30.0.  
+**Rationale:** Empirically validated via score debugging. In-domain topics score 70+; out-of-domain queries score 17–23. See `docs/agent_transcripts.md` for the full failure analysis.
+
+---
+
+## 5. Known Gaps & What I'd Prioritise Next
+
+| Gap | Priority | Notes |
+|---|---|---|
+| Dense embedding second-pass | High | Improve recall near the 30.0 threshold boundary |
+| Persistent BM25 pickle cache | Medium | Reduce cold-start init from ~8s to <1s |
+| Multi-turn retrieval refinement | Medium | Use history to refine retrieval queries contextually |
+| Playwright automated UI tests | Low | Automate 14 manual UI test cases |
+| Demo video with live failure test | Low | Deliberately break Ollama to demonstrate fallback behavior live |
